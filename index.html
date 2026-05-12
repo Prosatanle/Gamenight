@@ -81,7 +81,7 @@ const canvas=document.getElementById('c');
 const ctx=canvas.getContext('2d');
 ctx.imageSmoothingEnabled=false;
 const scEl=document.getElementById('sc'),bsEl=document.getElementById('bs');
-const W=400,H=580,GRAV=0.45,FLAP=-8.5,PW=68,GAP=158,SPD=2.5,PINT=90;
+const W=400,H=580,GRAV=0.30,FLAP=-6.0,PW=68,GAP=175,SPD=1.7,PINT=100;
 
 let best=0;
 try{best=parseInt(localStorage.getItem('flappyProsa')||'0');}catch(e){}
