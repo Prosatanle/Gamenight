@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prosa Pong</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background:#f4f2ee;
+    display:flex; flex-direction:column;
+    align-items:center; justify-content:center;
+    min-height:100vh; font-family:monospace;
+    user-select:none;
+  }
+  #wrap { position:relative; }
+  canvas {
+    display:block; border-radius:14px;
+    border:3px solid #111; cursor:none;
+    image-rendering:pixelated;
+    box-shadow: 4px 4px 0 #111;
+  }
+  #ui {
+    display:flex; justify-content:space-between;
+    width:540px; margin-top:.8rem;
+    font-size:13px; color:#555;
+  }
+  #ui b { color:#111; font-size:16px; }
+  #hint { margin-top:.4rem; color:#999; font-size:11px; letter-spacing:.05em; text-align:center; }
+  #back { margin-top:1rem; font-size:11px; color:#999; text-decoration:none; letter-spacing:.08em; text-transform:uppercase; }
+  #back:hover { color:#111; }
+
+  /* Splash */
+  #splash {
+    position:absolute; inset:0; border-radius:11px;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    pointer-events:none; z-index:10;
+    animation: splashFull 2.8s ease forwards;
+  }
+  @keyframes splashFull {
+    0%   { background:rgba(0,0,0,0);   opacity:0; }
+    14%  { background:rgba(0,0,0,0.92);opacity:1; }
+    72%  { background:rgba(0,0,0,0.92);opacity:1; }
+    100% { background:rgba(0,0,0,0);   opacity:0; }
+  }
+  #splash-title {
+    font-size:42px; font-weight:bold; color:#FFD700;
+    letter-spacing:4px; opacity:0; transform:scale(0.4);
+    text-shadow:0 0 24px rgba(255,215,0,0.7);
+    animation:titlePop .5s cubic-bezier(0.34,1.56,0.64,1) .4s forwards;
+  }
+  @keyframes titlePop { to { opacity:1; transform:scale(1); } }
+  #splash-sub { font-size:13px; color:#ccc; margin-top:14px; opacity:0; animation:subFade .4s ease 1.1s forwards; }
+  @keyframes subFade { to { opacity:1; } }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="c" width="540" height="400"></canvas>
+  <div id="splash">
+    <div id="splash-title">PROSA PONG</div>
+    <div id="splash-sub">Bereit? Drückt LEERTASTE!</div>
+  </div>
+</div>
+<div id="ui">
+  <span>🧑 Spieler 1 (W/S): <b id="s1">0</b></span>
+  <span>Spieler 2 (↑/↓): <b id="s2">0</b> 🧑</span>
+</div>
+<div id="hint">W / S &nbsp;·&nbsp; Pfeiltasten ↑↓ &nbsp;·&nbsp; Bis 7 Punkte gewinnt</div>
+<a id="back" href="index.html">← Zurück zum Menü</a>
+
+<script>
+const canvas=document.getElementById('c');
+const ctx=canvas.getContext('2d');
+ctx.imageSmoothingEnabled=false;
+const W=540,H=400;
+const s1El=document.getElementById('s1');
+const s2El=document.getElementById('s2');
+
+const N=null;
+const P1_W=23,P1_H=27;
+const P1=[
+  [N,N,N,N,N,N,N,'#201d32','#1f1b2c','#1e1b2e','#1f1c2d','#201c2d','#1e1b2c','#1f1c2d','#231e32',N,N,N,N,N,N,N,N],
+  [N,N,N,N,N,'#232033','#1f1c2d','#c8846d','#f0ae94','#efae90','#efac8f','#eeab91','#efae90','#eead91','#eead8f','#1f1d32','#232035',N,N,N,N,N,N],
+  [N,N,N,N,'#201d32','#cb856c','#eeaf90','#efad93','#edac8e','#f0ad90','#f0ad90','#f0af93','#edac8e','#eead8f','#efad93','#eec8b1','#ecaa88','#242134',N,N,N,N,N],
+  [N,N,N,'#201d30','#cb8770','#edb094','#f1b092','#eead8f','#efae90','#efae92','#efae92','#edac90','#f0af93','#eead8f','#eead8f','#efae92','#f1c8b2','#eeac8c','#211e2f',N,N,N,N],
+  [N,N,'#232033','#c98b76','#e8a185','#e4a282','#f0b192','#eead8f','#eead8f','#efae90','#f0af93','#f0af93','#f0af91','#f0af91','#f0af93','#efae90','#ecac89','#efc1a9','#eeaf90','#232031',N,N,N],
+  [N,N,'#1e1a2b','#e6a386','#e7a688','#e7a48a','#e3a284','#f0af93','#eead8f','#f1b094','#efae92','#efae92','#f0af93','#efae92','#f1b094','#f0af93','#efae92','#eead91','#f2c3a9','#201d30',N,N,N],
+  [N,'#201d2e','#cd8a70','#e4a385','#e2a183','#e3a284','#e0a182','#f2b193','#f1b094','#efae92','#efae92','#efae92','#eeae92','#efae92','#f2b193','#f0af93','#efae90','#efae90','#eeb194','#f2c5ae','#211e2f',N,N],
+  [N,'#211e31','#cb886d','#e3a284','#e4a385','#e3a284','#e3a286','#e3a284','#eeae92','#f0af91','#edac8e','#edac90','#efae90','#efae90','#efae92','#f0af93','#eead8f','#eead8f','#f0af93','#f0c2ab','#201d30',N,N],
+  [N,'#211e2f','#cc896e','#e3a284','#e2a183','#e1a082','#e3a485','#e3a485','#efae90','#eead8f','#efae90','#eead8f','#eead8f','#efae90','#eead8f','#edac90','#edac8e','#efae90','#efae90','#efc1a9','#201d30',N,N],
+  [N,'#201d30','#cb856b','#e3a284','#e3a387','#e2a185','#e2a183','#e2a183','#eead91','#edac90','#efae92','#eead8f','#eead91','#efae92','#efae92','#eead8f','#eeae92','#eeae93','#eeae92','#f1c3ac','#1f1b2c',N,N],
+  [N,'#1f1c2f','#cb856c','#e4a387','#e3a286','#e2a183','#e2a183','#e3a284','#f0ae8e','#ecaf93','#6e5f58','#73645d','#6b6158','#71635a','#edac8e','#eeaf90','#efae90','#eeae92','#72655c','#6f625a','#232033',N,N],
+  [N,'#211e31','#1e1b2c','#1d1a2b','#1e1b2e','#1e1b2e','#1d1c2c','#1e1b2e','#1f1c2d','#1b1829','#1f1e2e','#1d1a2b','#1e1b2c','#1f1c2d','#1e1b2e','#edb093','#eaaf91','#1e1b2e','#1e1d2f','#201c2d','#201d2e','#1c192c','#201d2e'],
+  ['#1d1a2b','#f3b495','#efae92','#eead8f','#1d1a2d','#c4826c','#c68571','#c4826c','#1f1c2f','#1f1d2b','#c47d67','#c58674','#1e1b2e','#c07d6a','#1d1a2d','#212032','#201d30','#1d1a2d','#c1846f','#1c192c','#6e6158','#cdccca','#1f1d2b'],
+  ['#1f1c2d','#f0b192','#c27f65','#edaa8d','#e9ac8f','#c78d77','#eeb195','#ecab8b','#d1987d','#1f1c2d','#ffffff','#fffffd','#201d30','#efaf93','#1e1b2e','#eead8d','#c98f79','#1e1b2e','#ffffff','#201d30','#70635a','#c8c6c7','#1d1b29'],
+  ['#1e1b2e','#eead8f','#eead8f','#c07e66','#f0af93','#c68e77','#efac8f','#eead8f','#edac8e','#1f1c2d','#eead8f','#edae8f','#f0af93','#eba989','#211e31','#efaa89','#f2c8b0','#1d1a2b','#eeab8e','#eeb194','#71645b','#c6c5c1','#1f1c2d'],
+  ['#1f1c2d','#efae90','#edad91','#c5836b','#eead91','#c78f78','#edac8e','#eead8f','#eeaf90','#ecac90','#1e1b2e','#221f30','#201d2e','#1e1c2a','#f0af91','#efaf93','#f3c5ae','#c4826a','#1d1a2b','#201d30','#1e1c2a','#1f1c2f',N],
+  [N,'#1f1b2c','#eeae92','#edad91','#eeab90','#c89079','#c88f7b','#edac8e','#edac8e','#eead8f','#eead8f','#efae92','#efae90','#efad93','#efae90','#f0af93','#edb093','#edc3aa','#c7856d','#eeae92','#1d1b29',N,N],
+  [N,N,'#1f1c2f','#1f1d2b','#201d30','#c68e77','#c68e77','#efae90','#eead8f','#efae92','#eead91','#eead91','#edac8e','#edac8e','#eead8d','#c5836d','#c5836b','#c4826a','#c27e67','#eead8f','#1f1c2d',N,N],
+  [N,N,N,'#1e1b2e','#bb816d','#78665a','#c58d76','#c38c77','#eeae92','#f0b095','#bd7b65','#ecab8b','#efae90','#edae8f','#756357','#756359','#78665a','#eeaf90','#efae90','#f0af91','#1f1c2d',N,N],
+  [N,N,N,N,'#1b192e','#73625a','#c58c79','#c68d79','#c68f7a','#c3836a','#f2b195','#79625a','#eeab90','#edad92','#eead91','#efae92','#efae92','#efac8f','#79655a','#f0af93','#211e31',N,N],
+  [N,N,N,N,N,'#201d30','#c7907b','#c58e79','#c68d79','#c4907a','#f0b095','#edac8e','#be7a63','#c07f63','#bf7e68','#be7d69','#bf7d65','#bd7c66','#f0af91','#efb091','#1d1b29',N,N],
+  [N,N,N,N,N,N,'#1e1b2e','#c58e79','#c38f7a','#c58e79','#c5917b','#edae8f','#f0af93','#eead8f','#f0af93','#edad94','#f1b094','#edac90','#f0ab8c','#c3917a','#211e2f',N,N],
+  [N,N,N,N,N,N,N,'#1e1d2d','#c38f79','#c18e79','#c5917c','#efae92','#efae90','#eead8f','#c68e77','#73605a','#72615a','#edaa8f','#f0af93','#1d1c2a',N,N,N],
+  [N,N,N,N,N,N,N,N,'#201d2e','#c3907b','#c09079','#c18d77','#eead91','#edac8e','#eead91','#eeae92','#ecaf92','#efb091','#c18d78','#1b1829',N,N,N],
+  [N,N,N,N,N,N,N,N,N,'#211d2e','#76655d','#c3907d','#c18d78','#ecaa8a','#eeaf90','#edae8f','#efa98f','#c48b77','#242230',N,N,N,N],
+  [N,N,N,N,N,N,N,N,N,N,'#201d30','#1e1b2c','#c1917b','#c28f7a','#77655b','#c58d76','#7d6b61','#76635c','#201d2e',N,N,N,N],
+  [N,N,N,N,N,N,N,N,N,N,N,N,'#211e2f','#1c172b','#201d32','#201d30','#211e2f','#1e1a2b',N,N,N,N,N],
+];
+const P2_W=48, P2_H=64, P2_RATIO=0.7535;
+const P2=[
+  [N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,'#3b2d28','#4c3e3a','#4a3b38','#493936','#483834','#4d3c39','#382e2a',N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N],
+  [N,N,N,N,N,N,N,N,N,N,N,N,N,'#36241f','#3a2920','#35241c','#2f1e18','#37221c','#563e33','#836f64','#897970','#89786e','#8a776c','#816b5e','#7a6253','#776052','#725c53','#4d3d37','#150e0b',N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N],
+  [N,N,N,N,N,N,N,N,N,N,N,'#3e2b23','#694f45','#816659','#806a60','#8b7466','#65473a','#62483f','#674f45','#583d30','#563a2d','#5d4032','#694d40','#745b4e','#7b6557','#7b6657','#7d6354','#80695a','#7d685f','#3e2d29',N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N],
+  [N,N,N,N,N,N,N,N,N,N,'#533b2f','#836756','#7d6558','#705646','#5d4236','#5b483c','#553a30','#50382d','#41271e','#2f1610','#331d16','#50382d','#5e463b','#6f584b','#644b3f','#614c42','#634c43','#634536','#785f51','#87756a','#67524b','#140c0a',N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N],
+  [N,N,N,N,N,N,N,N,N,'#402c23','#6c4e3c','#7a6355','#7c6960','#775f53','#796559','#4c392f','#503226','#7c5442','#865543','#7c4c3d','#805040','#6e4333','#43271d','#513e36','#716159','#7f7068','#73635a','#68554a','#685144','#664d40','#836b5b','#644e45','#150d0b',N,N,N,N,N,N,N,N,N,N,N,N,N,N,N],
+  [N,N,N,N,N,N,N,N,'#1c100d','#6e4f40','#7f685a','#735e54','#533b33','#4a3026','#483125','#845a49','#c98f78','#e5aa8d','#efb395','#efb395','#f2b498','#e6a98d','#b07862','#643a2d','#4a3127','#63534a','#7d6f67','#7d6e67','#7a6a63','#705c52','#5d4031','#7d6355','#695249','#160e0c',N,N,N,N,N,N,N,N,N,N,N,N,N,N],
+  [N,N,N,N,N,N,N,N,'#513c35','#7c655c','#654a3e','#462d23','#28110a','#392016','#8b5d4d','#e8aa8d','#f6bf9f','#f1bc9c','#f2be9e','#f3be9e','#f3bd9e','#f4be9f','#f3bb9c','#ebac8f','#b17861','#482a1e','#4f3e37','#83746b','#7a6864','#76655d','#6c5a51','#624638','#836c5d','#675046',N,N,N,N,N,N,N,N,N,N,N,N,N,N],
+  [N,N,N,N,N,N,N,'#3b261d','#755a4d','#65493c','#43281c','#3d221b','#382119','#7d5241','#e9aa8d','#f4bc9e','#f1bb9c','#f3bb9c','#f3bb9c','#f3bb9c','#f3bb9c','#f3bb9c','#f3bc9c','#f3bd9f','#f8be9e','#be866c','#4f2e24','#533f37','#7c6b61','#523e34','#7b6c64','#634c42','#634b3f','#7c6b5f','#654e46',N,N,N,N,N,N,N,N,N,N,N,N,N],
+  [N,N,N,N,N,N,'#211310','#664634','#674938','#4a3124','#422d23','#513930','#5b372b','#c88c72','#f2b799','#f3bb9e','#f3bc9c','#f3bc9d','#f3bc9d','#f3bc9d','#f3bc9d','#f3bc9d','#f3bc9d','#f2bb9c','#f1bb9d','#fac1a1','#be856d','#432116','#543f38','#624c44','#564238','#7a6a63','#51372b','#735f56','#827067','#453632',N,N,N,N,N,N,N,N,N,N,N,N],
+  [N,N,N,N,N,N,'#3b251d','#6e5040','#675145','#655145','#5b473d','#341d14','#976450','#f0b598','#f2bc9d','#f3bc9b','#f3bc9d','#f3bc9d','#f3bc9d','#f3bc9d','#f3bc9d','#f3bc9d','#f3bc9d','#f3bc9d','#f2bb9d','#f1bb9c','#f6bd9c','#bd866b','#553226','#68534c','#463027','#7a6b64','#604a41','#563d32','#705d53','#6b564b','#261916',N,N,N,N,N,N,N,N,N,N,N],
+  [N,N,N,N,N,'#1d110e','#6f5549','#6d5a50','#6d5951','#634c41','#341d16','#47281d','#cd9075','#f3ba9b','#f2bb9c','#f3bc9c','#f3bc9d','#f3bc9d','#f3bc9d','#f3bc9d','#f3bc9d','#f3bc9d','#f3bc9d','#f3bc9d','#f3bc9d','#f2bb9c','#f1bb9c','#fac0a1','#a66f58','#49342c','#5c4841','#65524b','#6e5c54','#341c13','#6c574e','#715c51','#523c35',N,N,N,N,N,N,N,N,N,N,N],
+  [N,N,N,N,N,'#50362d','#836a5d','#705e52','#5a453a','#2f1a13','#351c15','#8c624f','#e6a98b','#f1ba9b','#f3bc9d','#f3bc9d','#f3bc9d','#f3bc9d','#f3bc9d','#f3bc9d','#f3bc9d','#f3bc9d','#f3bc9d','#f3bc9d','#f3bc9d','#f3bc9d','#f2bb9c','#f4bd9e','#ebb193','#784e3e','#5b4741','#503e35','#69564d','#381e16','#5a4237','#78685f','#644f45','#1c120f',N,N,N,N,N,N,N,N,N,N],
+  [N,N,N,N,'#271915','#775f54','#60493e','#674b3b','#3e231a','#382018','#493025','#ad7863','#f4b79a','#f3bc9e','#f2bb9c','#f1ba9c','#f2bb9c','#f1ba9c','#f2bb9c','#f3bc9d','#f3bc9d','#f3bc9d','#f3bc9d','#f3bc9d','#f3bc9d','#f3bc9d','#f3bc9d','#f1ba9b','#f9c2a3','#d59c80','#4d2e24','#3c2b23','#6a554c','#3f251b','#3f261d','#705e55','#705b50','#43312a',N,N,N,N,N,N,N,N,N,N],
+  [N,N,N,N,'#564034','#63483b','#5d4133','#462d21','#482c22','#4e3226','#4e2e23','#c88b6f','#f0b596','#f1bb9b','#f8c0a1','#fcc4a4','#fbc3a3','#fbc4a4','#f6bfa0','#f2bb9c','#f3bc9c','#f3bc9d','#f3bc9d','#f3bc9d','#f2bb9c','#f2bc9c','#f2bc9c','#f3bc9c','#f1bb9c','#f5bc9d','#895a46','#36211b','#66524b','#3b2218','#42281e','#684f43','#746055','#5b3f32',N,N,N,N,N,N,N,N,N,N],
+  [N,N,N,'#19100d','#593d30','#5b3e2f','#53382b','#4a322a','#62483a','#311913','#815140','#e8a88a','#f4bc9e','#f9c2a2','#daa489','#c7947b','#cb967e','#ca957b','#e2ad8f','#f9c1a2','#f1ba9c','#f3bc9d','#f2bc9d','#f3bc9e','#f8c1a1','#f8c0a1','#f7bfa1','#f6bfa0','#f4bd9f','#ffc7a6','#cf957c','#3e231d','#5d4a43','#40261b','#41261b','#55382c','#725f54','#5d4136',N,N,N,N,N,N,N,N,N,N],
+  [N,N,N,'#170d0a','#593d2f','#593c2d','#563b2f','#715a4e','#482d23','#250e0a','#8e5a49','#e4a385','#eab296','#b47d69','#986450','#8f5b48','#95604c','#804f3e','#7f4d3e','#dba489','#f6bfa0','#f1ba9b','#f2bc9e','#f5bd9e','#c48d76','#915d4d','#976753','#986754','#ab7660','#d79e86','#e5a88b','#613c2e','#4d362c','#55382c','#371f18','#3e241a','#745a4c','#775a4c','#291b14',N,N,N,N,N,N,N,N,N],
+  [N,N,N,N,'#4c3026','#5b4035','#766359','#4d342a','#391f17','#27100c','#8c5a48','#e19d80','#be8366','#c7966e','#e8ba8c','#ebbc8d','#efbe8c','#e0b384','#a67859','#ac745d','#f3ba9b','#f1ba9b','#f6be9f','#cf9178','#8d5a44','#a47d5d','#c89f76','#cc9f74','#d4a87c','#b28763','#dea484','#734938','#331c14','#624435','#442b21','#382018','#674939','#765442','#382720',N,N,N,N,N,N,N,N,N],
+  [N,N,N,'#150c0b','#4e3225','#725d51','#665348','#391e15','#341c16','#240f0b','#8a5747','#de9b7c','#e4b087','#e2ad82','#e5a582','#f1b293','#e1a485','#e3a585','#e7b186','#dcaa81','#f2b99a','#f8bfa2','#f6bda2','#cc9274','#d4a278','#e0a780','#eeac8c','#eaa988','#edac8b','#e0a57f','#eab88b','#9c6b52','#2f1510','#664839','#55382b','#25100a','#4e342b','#765743','#5b3e2f',N,N,N,N,N,N,N,N,N],
+  [N,N,N,'#1a100d','#684837','#7b6658','#513b2f','#3e231a','#2f1712','#2e150c','#956348','#eebb8a','#e2aa79','#df9c84','#9f725e','#5f3c31','#735044','#7a5748','#b1715f','#e0ae84','#e6b580','#e4b783','#e1ae7b','#e5b788','#b97f65','#805143','#643e31','#835f52','#7d5e4f','#d18f77','#e5a67d','#d5a879','#5d3d2c','#4f3426','#57392b','#27120c','#382018','#6d4e3c','#694b3c',N,N,N,N,N,N,N,N,N],
+  [N,N,N,'#1e110e','#694e3e','#7e6557','#52382c','#422920','#2b1411','#33190f','#8d6136','#d7ad6e','#e8ab7b','#8b5646','#7b5c4d','#51554f','#363d3c','#908074','#a16452','#ce9b73','#b68657','#e4aa8b','#c59160','#d2a26c','#a36753','#a28373','#3d4442','#4b4e4c','#69625c','#714537','#d39572','#deb274','#916b40','#412518','#67493a','#331b13','#432a20','#5e3f31','#7d5f51','#392d29',N,N,N,N,N,N,N,N],
+  [N,N,N,N,'#493125','#714e3e','#41261e','#381e18','#2a150f','#30170f','#995f4c','#e3a579','#e3aa7c','#c38c76','#f8bb9c','#d0a893','#a08776','#dcad95','#f5b69b','#e0a978','#c28a66','#ffcbb4','#d7a07d','#d29961','#f4ba9c','#f5bb9c','#bd9b86','#a38877','#e6b69b','#d19781','#d29a75','#d19662','#714133','#2c120e','#5c3c30','#3f241b','#3e271d','#593e2d','#7b5846','#6e5247','#140c09',N,N,N,N,N,N,N],
+  [N,N,'#181010',N,'#472e25','#714f3e','#4b3024','#361e16','#2a130f','#3c1c15','#ab6f5a','#dca17d','#d39e6b','#ffc8aa','#eeb495','#eeae91','#efae8d','#eaae90','#f3ba9d','#dba36a','#dd9f7a','#f0b79c','#eeb696','#d69c64','#f0b792','#e8ac91','#eba889','#f4b393','#ecaf92','#fbc1a5','#e4ae7d','#d2986a','#955f50','#28100b','#442a1f','#52352b','#28110b','#52362a','#704f3c','#72513f','#38231a',N,N,N,N,N,N,N],
+  [N,N,'#14100f',N,'#5a3b2d','#6c4c3b','#62473a','#321c15','#2a150f','#3b1c16','#a46852','#eeb295','#c7925f','#e4ac7b','#eeb297','#f0b89e','#f0b79f','#f7bda0','#dea676','#cd9563','#edb196','#ecb395','#f4b89f','#d1996f','#ce9763','#f6bf9f','#f0b89e','#f0b89e','#f2b79e','#efb58e','#c08c55','#e1a585','#8f5a49','#2a120d','#351f16','#573a2d','#331b14','#4b2f26','#674836','#5f4130','#4b3024','#211612',N,N,N,N,N,N],
+  [N,N,'#1c1210','#2c1812','#785643','#5c4032','#654c40','#361c16','#2a150f','#361811','#a66954','#ecae92','#e2a885','#c99259','#dba46c','#e1a770','#e5ab72','#dda974','#c38a5b','#e2a682','#efb59a','#f3bca0','#f5bba2','#eaab8d','#c28559','#d3a06b','#e6ae75','#e2aa6f','#e0a875','#c79158','#d9a179','#f3b89e','#8d5846','#2f1510','#2c140f','#5a3b2e','#3c221a','#4a2e24','#664736','#6a4a3a','#472c1f','#452d24','#16110f',N,N,N,N,N],
+  [N,N,N,'#4c2d22','#866856','#533b33','#5e443a','#361d17','#2a140f','#553026','#a46852','#f0b293','#f3ba9d','#e7ae92','#d39c70','#c18b56','#c8925d','#c78e66','#de9e85','#f8bb9e','#f8c0a5','#f9cdba','#f7bfa4','#f5b799','#db9c84','#be815e','#cc9361','#c58e5a','#cb9363','#eab292','#ecb195','#e9ab8c','#985e4a','#58332a','#260f0b','#4b2e23','#3b211a','#4a2e23','#654738','#523729','#583a2d','#271a15','#30201c',N,N,N,N,N],
+  [N,N,'#2a1713','#59392a','#70503f','#563e33','#765a4e','#301710','#3f2219','#905948','#a1654f','#e5a585','#f1b99a','#eeb496','#ebb194','#f3b89e','#edb296','#c6846a','#b5755d','#b47c64','#cd8f75','#f8bca1','#e6a88e','#af745e','#bc806b','#c58368','#e6a88e','#f3b99f','#eeb699','#edb197','#f5bd9f','#e4a687','#955c47','#633a2d','#24100b','#3e241c','#331b13','#4d3227','#604435','#4a2e21','#644335',N,'#33231d',N,N,N,N,N],
+  [N,'#140d0b','#472920','#755543','#755b4e','#5d4438','#6e5042','#341d14','#4f2c22','#b3735b','#8e5542','#cd8c70','#e2a282','#edb495','#f2ba9b','#e2a68a','#ca856a','#e1a184','#dba084','#995c48','#935745','#a2654f','#985c47','#985c46','#cb8f74','#f4ba9c','#ce8d71','#d89c7e','#f5be9f','#ecb294','#edae8f','#be8068','#985e49','#744838','#230e0a','#3e241c','#381f16','#53382b','#53372b','#331a12','#614130','#2f221c','#35231b','#180c0a',N,N,N,N],
+  [N,'#33201b','#2b1d17','#755341','#66493a','#624738','#614334','#472e23','#43221b','#b3755c','#8f5744','#c9886d','#da997a','#d9997d','#d7967a','#c9866a','#e2a384','#eeb699','#f5bd9e','#e4a98b','#bb7e65','#9e624c','#af735a','#da9e7e','#f5bd9e','#f1bb9c','#f2b89a','#d39275','#ce8f72','#de9f80','#de9d7c','#b5765e','#935a48','#623b2f','#28120c','#44281e','#3e251c','#614538','#402518','#27110b','#5b3d2d','#3d2b20','#1c100f',N,N,N,N,N],
+  ['#1c100e','#271915','#180e0b','#77594a','#664c3b','#4f3125','#5b3d2f','#5b3d2e','#260f0a','#6f4435','#784737','#cc8b70','#d49376','#d29277','#c8886c','#d8987a','#e6ac8f','#fac3a5','#fac1a3','#f2b69a','#e9a88e','#edaf91','#eaa88e','#edb196','#f4bb9d','#f8bfa0','#eab194','#ebb091','#cc9075','#d49579','#d19071','#ba7c63','#653b2e','#361c14','#3d241b','#391f17','#382019','#765b4e','#533628','#28120d','#503326','#5c4336',N,N,N,N,N,N],
+  ['#23140f','#251813','#150d0a','#775c50','#694e40','#4a2d22','#57382b','#654634','#29140e','#29130e','#341712','#b97e67','#d49275','#d4967a','#ecb194','#eab294','#ad755f','#ad6f5e','#b37263','#aa6658','#a76156','#b57464','#aa6559','#a66154','#b06c5c','#b07362','#a76f5a','#e2aa8d','#eab192','#dda487','#d18f72','#8d5847','#28110c','#311912','#482c22','#311711','#41271f','#765b4e','#55392c','#26100b','#4d3025','#6d4f42',N,N,N,N,N,N],
+  ['#22130e','#251712','#170f0c','#785846','#664838','#513529','#41271c','#644433','#301912','#301913','#26100b','#815241','#db977a','#cd8e71','#f2b89a','#f1b799','#f0b99b','#ca9279','#b57664','#b87669','#bb7c72','#b6756b','#b97a72','#ba7a70','#b47666','#cf967f','#f5bda0','#efb496','#f5bd9f','#d09175','#db9679','#643c2f','#26100c','#311710','#5d4237','#3e251d','#482c21','#72594c','#65493b','#331911','#3f251d','#604235',N,N,N,N,N,N],
+  ['#140e0b','#1f1610','#140c0a','#6d4c3b','#674835','#624233','#2e1711','#604233','#42281e','#2b130e','#2a1510','#47251b','#c9896d','#dd9b7d','#e5a98b','#efb698','#eaae91','#fac2a4','#fac1a3','#f1b397','#edac95','#efaf96','#edad94','#eeb095','#f9c0a1','#fac1a3','#ecb395','#ebb294','#edb092','#e09f7f','#b77b62','#341a11','#361f18','#311710','#664b3f','#4e372e','#41261b','#664d41','#826a5c','#5a3d2f','#381e16','#301d18',N,N,N,N,N,N],
+  [N,'#1c1412',N,'#493125','#5e3f30','#6e4d3c','#3e261d','#553629','#563629','#2a130d','#301812','#28120c','#96614d','#e5a184','#d8987a','#ecae90','#efb698','#eeb698','#f0b99c','#f0b89a','#e8ad8f','#e8ab8e','#e8ab8e','#efb497','#f1ba9c','#efb89b','#edb497','#eeb598','#dc9e80','#d89476','#6e4134','#24100a','#442920','#331a13','#614638','#685347','#40281e','#674a3c','#6c574c','#7d685b','#5b3b2b','#241510',N,N,N,N,N,N],
+  [N,N,N,'#452e23','#5d4030','#674836','#4e3125','#3e231a','#573829','#2e150f','#301811','#29140e','#4e2a20','#c78970','#df9c7e','#d79579','#edb295','#f2bb9e','#f1ba9c','#edb397','#eeb496','#f0b79a','#f0b698','#ecb395','#f1b99c','#f1b99b','#f5bc9f','#dd9f81','#e29f80','#ad715b','#34160f','#2e1811','#5d3e30','#533528','#5f4132','#6a5146','#5f463d','#5d3f34','#5e4336','#644e43','#867062','#50392f',N,N,N,N,N,N],
+  [N,N,N,'#2a150e','#5b3e30','#644535','#533529','#341b13','#573a2d','#371e17','#2c1510','#2f1811','#24100a','#4e2f24','#ce9074','#e2a082','#dc9d7f','#f0b69a','#f0ba9c','#f1ba9c','#f1ba9c','#f1ba9b','#f1ba9b','#f1ba9c','#f1ba9d','#f1bb9e','#e3a687','#e3a080','#b67b63','#3f2017','#2a130f','#301812','#5c3e31','#5c3d2f','#694737','#4c3026','#6d574c','#543a2d','#5d4033','#53382b','#685245','#7f695b','#261611',N,N,N,N,N],
+  [N,N,N,'#2f1b15','#4f3127','#634436','#5b3d2e','#3d2319','#4a2e24','#391f18','#2c1510','#2e1711','#321a13',N,'#472c25','#b87b63','#df9a7a','#e5a889','#f0b99a','#f0ba9d','#f0ba9b','#f0ba9b','#efb99b','#f0ba9c','#f0b899','#e8ad8e','#de9b7e','#b1745e','#281713','#140a08','#321711','#361c15','#503427','#5c3e30','#775541','#361d13','#51362b','#715a4c','#5c4033','#604236','#4f3227','#6b5043','#63483b',N,N,N,N,N],
+  [N,N,N,'#472d23','#44281f','#5e4032','#5e4030','#4f3327','#492d23','#392018','#2c150f','#2e1711','#311913',N,N,'#1d100c','#784f40','#b97e64','#e29f82','#f2b395','#f2b191','#f1b293','#f2b393','#efb192','#e2a182','#c4846a','#815343','#24130e',N,'#1e100d','#2e140d','#42291f','#4d3024','#45291e','#694a38','#3b2119','#3c2118','#5d4135','#765f55','#674d42','#583a2d','#4d3124','#664738','#241a14',N,N,N,N],
+  [N,N,'#271814','#492b22','#482d21','#694a39','#5f3f31','#5a3c2d','#482c22','#391f17','#2c150f','#2e1711','#301812',N,N,N,N,'#1d0e0a','#654033','#7e5243','#865847','#855746','#885948','#7c5040','#6b4235','#331d16',N,N,N,'#1a0d0a','#2c110c','#4e3226','#5a3c2e','#270e09','#624435','#4f3125','#3d221b','#3b2118','#5d453a','#79655b','#604336','#56392a','#634434','#50342a',N,N,N,N],
+  [N,N,'#3c221a','#41281f','#5d4032','#654536','#5f3f31','#5c3d2f','#462a20','#3a2118','#2c140e','#30160f','#2b1411',N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,'#281613','#31160f','#52372a','#4a2e23','#230d09','#4a2c22','#503226','#3c211a','#3c221a','#4a2d22','#715b51','#684f44','#6c4a39','#6d4d3c','#59372b','#3b261e','#1a110e',N,N],
+  [N,'#201310','#321c17','#533a2e','#644637','#5d3e30','#6c4c3a','#462920','#442a20','#341c15','#2c140e','#301710','#22120d',N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,'#371d17','#3a2016','#503426','#381f17','#301913','#311710','#5f4133','#3e241c','#3d251c','#3e2218','#65483b','#664b3f','#724e3c','#71513e','#483025','#21120e','#3c2620','#231713',N],
+  [N,'#170c0c','#36251e','#634435','#5b3d2e','#5e3e31','#5f402f','#3b2019','#472c22','#2b140e','#2e1611','#32170f','#25120e',N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,'#3c251b','#3b2118','#54382b','#3a2117','#3a2019','#351b14','#765441','#3a2117','#3c241a','#40251b','#573a2d','#714f3c','#815b46','#2e2019','#231510','#190f0c',N,'#35201a',N],
+  ['#231514',N,'#3c2921','#624434','#4c2f23','#5a3c2f','#3f261b','#382018','#3c211a','#2c130f','#2e1511','#31170f','#1f110e',N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,'#40261c','#371d15','#3b211a','#351c15','#3a2017','#44291f','#604230','#2a130c','#371c14','#462b1f','#523528','#795640','#412a1e',N,'#291913','#38221b',N,'#352119',N],
+  ['#1f1110',N,'#422a22','#654536','#381d15','#55382c','#492e22','#482c21','#2e150f','#2e1510','#2f1710','#2f1712',N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,'#1b110e','#4d2f23','#351c15','#3a2018','#462c22','#3b2118','#56392d','#52372c','#250f0c','#331b13','#3b2218','#573a2d','#6a4a38',N,'#1b100f','#331c16','#331f19','#281d19','#2f1f17',N],
+  [N,'#201410','#583a2d','#614132','#371e16','#55382b','#634234','#341912','#2e150e','#2f1712','#24130f',N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,'#291712','#492d22','#321a13','#40271d','#4f352c','#381e17','#593b2e','#452b22','#28120b','#40261c','#462a21','#472a21','#5f3f30','#291613','#1b0f0d','#2e1812','#39241c','#1e1513',N,N],
+  ['#150b0c','#4a332a','#5c3f32','#5e3f2f','#58392b','#513327','#54362a','#43271e','#25130f',N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,'#462920','#321812','#301913','#452a20','#4f352c','#391f19','#4d2f23','#51362c','#331a12','#4b2f25','#4f3326','#593a2e','#684738','#3b2018','#22120e',N,'#41261d','#160e0b',N,N],
+  ['#1a110f','#5f4134','#44281e','#4d3023','#6e4c3a','#361f16','#23120e','#422d26',N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,'#3e241e','#4e3226','#2c140e','#311811','#54382b','#543a2e','#381f17','#503328','#523a2d','#3d241b','#392018','#5a3b2d','#53362a','#53372a','#5d4031','#2c160f',N,'#42271f','#180f0d',N,N],
+  [N,'#41281d','#27120e',N,'#473126','#2f1e18',N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,'#261410','#4a2d22','#3e241a','#2c150e','#301811','#664637','#593f32','#2d160f','#563828','#5d4031','#523a2f','#28130a','#583b2d','#5e3f2f','#2a140b','#634334','#3c2920',N,'#38231c',N,N,N],
+  [N,N,N,N,'#201612','#311f1a',N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,'#170d0d','#2b1a16','#472d22','#341b15','#2d130e','#2b120e','#5d3e31','#5d4133','#2e170f','#3a2017','#694b3a','#5b3f31','#3e241b','#45281d','#694939','#432a1f','#492b1f','#4f3529','#3f271e','#1e1310',N,N,N],
+  [N,N,N,N,N,'#462c24',N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,'#171010','#261915','#43281d','#2e1710','#321913','#2e160e','#54372a','#6d4e3d','#402920','#27110b','#44291f','#664636','#593c2d','#4d3327','#5e4133','#5d4135','#4e362b','#4c3126','#462d24',N,N,N,N],
+  [N,N,N,N,N,'#180f0d','#1e1310',N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,'#160f0d','#3a2118','#3d241b','#2b160e','#361d16','#40251b','#361e14','#664838','#4a3127','#3b2119','#3f261d','#5c4031','#664839','#694d3d','#715344','#4d352a','#513b30','#4f352a','#2b1811',N,N,N,N],
+  [N,N,N,N,N,N,'#1d120f','#160f0f',N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,'#231814','#37211a','#4f3126','#2b140d','#341d14','#4d3228','#351d16','#6e4d3d','#5b3f32','#41271c','#331d15','#4f3629','#604234','#795948','#6c5040','#553d31','#513b2e','#50362b','#331f18',N,N,N,N],
+  [N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,'#171311','#16100e','#2e201c','#23140f','#523429','#29120b','#462c22','#573a2e','#2b120d','#5a3b2d','#63473a','#4b3427','#351c13','#4c2f24','#523629','#715443','#694c3b','#715244','#51392e','#4b3128','#2d1a14',N,N,N,N],
+  [N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,'#181211','#191412','#23130e','#53362c','#2d160f','#513429','#664639','#260f09','#4f3228','#624437','#5e4336','#452a22','#452921','#624536','#775b48','#6a4d3d','#583b2e','#4c3228','#462921','#36221b',N,N,N,N],
+  [N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,'#16100f',N,'#341d15','#4c3025','#381f18','#4d3127','#66473a','#2a120c','#4e3227','#5c4033','#694f40','#412821','#492e25','#795b49','#7b5d4b','#553c2f','#3e281d','#40271b','#654638','#1d1310','#20100e','#1a0f0c',N,N],
+  [N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,'#392017','#492d24','#4a2f26','#503429','#634537','#3a2119','#452b20','#3e251e','#54392d','#492d22','#614635','#836552','#5b3e31','#472d22','#331a15','#583b2d','#4b372a',N,N,N,N,N],
+  [N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,'#4b3127','#482d23','#583d2e','#6b4b3a','#644636','#593b2f','#472f24','#2f1911','#503527','#7f604a','#7f604a','#54392d','#472d22','#3d2219','#5d4031','#7c5d49','#2b1911',N,N,N,N,N],
+  [N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,'#422e27','#4b2f24','#5c4030','#72513f','#593d2e','#4d3228','#55382b','#644735','#5b4132','#604334','#3c2018','#3d231a','#4f382b','#604333','#8c6d56','#5b3e2f','#2f1b15',N,N,N,N,N],
+  [N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,'#291c18','#41251c','#53382b','#624434','#492c21','#573c31','#513528','#4b2d22','#462b20','#27100a','#341a14','#523629','#3f241a','#7f604c','#482c20','#3b1f17','#38251e',N,N,N,N,N],
+  [N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,'#15110f','#3f241b','#4b2d21','#4d3227','#462a1f','#2d150d','#3e251c','#57392d','#3a1e16','#311912','#664a3a','#311a10','#644635','#6e4e3d','#230c09','#42241b','#36231c',N,N,N,N,N],
+  [N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,'#3e2b23','#4c2f24','#331c12','#2d150e','#371c14','#593b2f','#371e16','#28100a','#4d3125','#5d4030','#331911','#503527','#5d402f','#321912','#41261b','#36241c',N,N,N,N,N],
+  [N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,'#443129','#3c221a','#341c14','#301610','#513428','#391f16','#250e0a','#3f271d','#5f3e30','#3b2219','#3d221a','#2a110b','#593d2e','#3d2419','#523526','#2d1b13',N,N,N,N,N],
+  [N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,'#1f1411','#361d18','#391f17','#503429','#351a12','#51352a','#331911','#3c2018','#5f4132','#492f24','#371b14','#4b3025','#29110c','#462a21','#52382a','#432920','#140b09',N,N,N,N,N],
+  [N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,'#1f100b','#160c0c','#26130e','#614435','#3e241b','#371d15','#3f231b','#371c13','#593a2e','#3f241b','#2a100c','#492e23','#472c22','#341912','#2c1914','#1b1110',N,N,N,N,N,N],
+  [N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,'#20100c',N,N,'#5f4234','#543b2d','#301610','#321812','#260e08','#56382b','#42261c',N,'#1b0e0a','#492c21','#44291f','#291a15','#1c1413',N,N,N,N,N,N],
+];
+
+// Pre-render both faces
+function makeOffscreen(grid, gw, gh) {
+  const oc = document.createElement('canvas');
+  oc.width=gw; oc.height=gh;
+  const ox = oc.getContext('2d');
+  ox.imageSmoothingEnabled=false;
+  for(let r=0;r<gh;r++)
+    for(let c=0;c<gw;c++){
+      const col=grid[r]&&grid[r][c];
+      if(!col)continue;
+      ox.fillStyle=col;
+      ox.fillRect(c,r,1,1);
+    }
+  return oc;
+}
+
+const face1=makeOffscreen(P1,P1_W,P1_H); // bald
+const face2=makeOffscreen(P2,P2_W,P2_H); // brown hair
+
+// ── Paddle sizes ──────────────────────────────────────────────────
+const PAD_H=72; // rendered height
+const PAD1_W=Math.round(PAD_H*(P1_W/P1_H)); // preserve ratio
+const PAD2_W=Math.round(PAD_H*(P2_W/P2_H));
+const PAD_SPEED=5;
+const BALL_SIZE=12;
+const WIN_SCORE=7;
+
+// ── Game state ────────────────────────────────────────────────────
+let p1y,p2y,ball,score1,score2,state,particles;
+const keys={};
+
+function reset(fullReset=true){
+  p1y=H/2-PAD_H/2;
+  p2y=H/2-PAD_H/2;
+  if(fullReset){ score1=0; score2=0; }
+  const angle=(Math.random()*0.8-0.4);
+  const dir=Math.random()<0.5?1:-1;
+  ball={
+    x:W/2, y:H/2,
+    vx:dir*4.5*Math.cos(angle),
+    vy:4.5*Math.sin(angle)
+  };
+  particles=[];
+  if(fullReset) state='waiting';
+  else state='playing';
+  s1El.textContent=score1;
+  s2El.textContent=score2;
+}
+
+function spawnParticles(x,y,color){
+  for(let i=0;i<12;i++){
+    const angle=Math.random()*Math.PI*2;
+    const speed=2+Math.random()*4;
+    particles.push({
+      x,y,
+      vx:Math.cos(angle)*speed,
+      vy:Math.sin(angle)*speed,
+      life:1, color
+    });
+  }
+}
+
+document.addEventListener('keydown',e=>{
+  keys[e.code]=true;
+  if(e.code==='Space'){
+    e.preventDefault();
+    if(state==='waiting'||state==='win') reset(true);
+    else if(state==='paused') state='playing';
+  }
+});
+document.addEventListener('keyup',e=>keys[e.code]=false);
+
+// ── Drawing ───────────────────────────────────────────────────────
+function drawBg(){
+  ctx.fillStyle='#f4f2ee';
+  ctx.fillRect(0,0,W,H);
+  // Center line
+  ctx.setLineDash([10,10]);
+  ctx.strokeStyle='#ddd';
+  ctx.lineWidth=2;
+  ctx.beginPath();
+  ctx.moveTo(W/2,0); ctx.lineTo(W/2,H);
+  ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+function drawFace(img, gw, gh, x, y, dw, dh){
+  ctx.imageSmoothingEnabled=false;
+  ctx.drawImage(img, x, y, dw, dh);
+}
+
+function drawBall(){
+  // Ball glow
+  const grad=ctx.createRadialGradient(ball.x,ball.y,0,ball.x,ball.y,BALL_SIZE);
+  grad.addColorStop(0,'#ff4d2e');
+  grad.addColorStop(1,'rgba(255,77,46,0)');
+  ctx.fillStyle=grad;
+  ctx.beginPath();
+  ctx.arc(ball.x,ball.y,BALL_SIZE*1.5,0,Math.PI*2);
+  ctx.fill();
+  ctx.fillStyle='#ff4d2e';
+  ctx.beginPath();
+  ctx.arc(ball.x,ball.y,BALL_SIZE/2,0,Math.PI*2);
+  ctx.fill();
+}
+
+function drawParticles(){
+  particles.forEach(p=>{
+    ctx.globalAlpha=p.life;
+    ctx.fillStyle=p.color;
+    ctx.beginPath();
+    ctx.arc(p.x,p.y,3,0,Math.PI*2);
+    ctx.fill();
+  });
+  ctx.globalAlpha=1;
+}
+
+function drawScores(){
+  ctx.textAlign='center';
+  ctx.font='bold 48px monospace';
+  ctx.fillStyle='rgba(0,0,0,0.08)';
+  ctx.fillText(score1, W/4, 60);
+  ctx.fillText(score2, 3*W/4, 60);
+}
+
+function drawOverlay(title,sub){
+  ctx.fillStyle='rgba(0,0,0,0.6)';
+  ctx.fillRect(0,0,W,H);
+  ctx.textAlign='center';
+  ctx.font='bold 36px monospace'; ctx.fillStyle='#FFD700';
+  ctx.fillText(title,W/2,H/2-20);
+  ctx.font='14px monospace'; ctx.fillStyle='#fff';
+  ctx.fillText(sub,W/2,H/2+16);
+}
+
+// ── Update ────────────────────────────────────────────────────────
+function update(){
+  if(state!=='playing') return;
+
+  // Paddle movement
+  const p1cx=PAD1_W/2+6; // paddle center x offset
+  const p2cx=PAD2_W/2+6;
+  if(keys['KeyW']) p1y=Math.max(0,p1y-PAD_SPEED);
+  if(keys['KeyS']) p1y=Math.min(H-PAD_H,p1y+PAD_SPEED);
+  if(keys['ArrowUp']) p2y=Math.max(0,p2y-PAD_SPEED);
+  if(keys['ArrowDown']) p2y=Math.min(H-PAD_H,p2y+PAD_SPEED);
+
+  // Ball movement
+  ball.x+=ball.vx;
+  ball.y+=ball.vy;
+
+  // Top/bottom bounce
+  if(ball.y-BALL_SIZE/2<=0){ ball.y=BALL_SIZE/2; ball.vy=Math.abs(ball.vy); }
+  if(ball.y+BALL_SIZE/2>=H){ ball.y=H-BALL_SIZE/2; ball.vy=-Math.abs(ball.vy); }
+
+  // Paddle 1 (left) collision
+  const p1right=PAD1_W+6;
+  if(ball.vx<0 &&
+     ball.x-BALL_SIZE/2<=p1right &&
+     ball.x+BALL_SIZE/2>=6 &&
+     ball.y>=p1y && ball.y<=p1y+PAD_H){
+    ball.x=p1right+BALL_SIZE/2;
+    const rel=(ball.y-(p1y+PAD_H/2))/(PAD_H/2);
+    const angle=rel*0.9;
+    const speed=Math.min(Math.sqrt(ball.vx**2+ball.vy**2)*1.05, 12);
+    ball.vx=Math.abs(Math.cos(angle)*speed);
+    ball.vy=Math.sin(angle)*speed;
+    spawnParticles(ball.x,ball.y,'#0057ff');
+  }
+
+  // Paddle 2 (right) collision
+  const p2left=W-PAD2_W-6;
+  if(ball.vx>0 &&
+     ball.x+BALL_SIZE/2>=p2left &&
+     ball.x-BALL_SIZE/2<=W-6 &&
+     ball.y>=p2y && ball.y<=p2y+PAD_H){
+    ball.x=p2left-BALL_SIZE/2;
+    const rel=(ball.y-(p2y+PAD_H/2))/(PAD_H/2);
+    const angle=rel*0.9;
+    const speed=Math.min(Math.sqrt(ball.vx**2+ball.vy**2)*1.05, 12);
+    ball.vx=-Math.abs(Math.cos(angle)*speed);
+    ball.vy=Math.sin(angle)*speed;
+    spawnParticles(ball.x,ball.y,'#ff4d2e');
+  }
+
+  // Score
+  if(ball.x<0){ score2++; spawnParticles(0,ball.y,'#ff4d2e'); checkWin()||reset(false); return; }
+  if(ball.x>W){ score1++; spawnParticles(W,ball.y,'#0057ff'); checkWin()||reset(false); return; }
+
+  // Particles
+  particles.forEach(p=>{ p.x+=p.vx; p.y+=p.vy; p.life-=0.04; p.vx*=0.95; p.vy*=0.95; });
+  particles=particles.filter(p=>p.life>0);
+}
+
+function checkWin(){
+  if(score1>=WIN_SCORE){ state='win'; s1El.textContent=score1; s2El.textContent=score2; return true; }
+  if(score2>=WIN_SCORE){ state='win'; s1El.textContent=score1; s2El.textContent=score2; return true; }
+  s1El.textContent=score1; s2El.textContent=score2;
+  return false;
+}
+
+function loop(){
+  drawBg();
+  update();
+
+  // Draw paddles as faces
+  drawFace(face1,P1_W,P1_H, 6,p1y, PAD1_W,PAD_H);
+  drawFace(face2,P2_W,P2_H, W-PAD2_W-6,p2y, PAD2_W,PAD_H);
+
+  drawScores();
+  drawBall();
+  drawParticles();
+
+  if(state==='waiting') drawOverlay('PROSA PONG','LEERTASTE zum Starten');
+  else if(state==='win'){
+    const winner=score1>=WIN_SCORE?'Spieler 1 🎉':'Spieler 2 🎉';
+    drawOverlay(winner+' gewinnt!','LEERTASTE für Rematch');
+  }
+
+  requestAnimationFrame(loop);
+}
+
+reset(true);
+loop();
+setTimeout(()=>{document.getElementById('splash').style.display='none';},3000);
+</script>
+</body>
+</html>
