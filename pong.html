@@ -63,8 +63,14 @@
   </div>
 </div>
 <div id="ui">
-  <span>🧑 Spieler 1 (W/S): <b id="s1">0</b></span>
-  <span>Spieler 2 (↑/↓): <b id="s2">0</b> 🧑</span>
+  <span style="display:flex;align-items:center;gap:8px;">
+    <canvas id="icon1" width="46" height="54" style="image-rendering:pixelated;vertical-align:middle;"></canvas>
+    Team 1 (W/S): <b id="s1">0</b>
+  </span>
+  <span style="display:flex;align-items:center;gap:8px;">
+    Team 2 (↑/↓): <b id="s2">0</b>
+    <canvas id="icon2" width="46" height="61" style="image-rendering:pixelated;vertical-align:middle;"></canvas>
+  </span>
 </div>
 <div id="hint">W / S &nbsp;·&nbsp; Pfeiltasten ↑↓ &nbsp;·&nbsp; Bis 3 Punkte gewinnt</div>
 <a id="back" href="index.html">← Zurück zum Menü</a>
@@ -196,20 +202,22 @@ const face1=makeOffscreen(P1,P1_W,P1_H); // bald
 const face2=makeOffscreen(P2,P2_W,P2_H); // brown hair
 
 // ── Paddle sizes ──────────────────────────────────────────────────
-const PAD_H=72; // rendered height
-const PAD1_W=Math.round(PAD_H*(P1_W/P1_H)); // preserve ratio
-const PAD2_W=Math.round(PAD_H*(P2_W/P2_H));
+const PAD_H=72; // rendered height for P1
+const PAD1_W=Math.round(PAD_H*(P1_W/P1_H)); // bald face: 72*(23/27)=61px wide
+// P2: match P1_W width, derive height from P2 grid ratio to preserve aspect
+const PAD2_W=Math.round(PAD1_W*1.2); // 20% wider than P1
+const PAD2_H=Math.round(PAD2_W*(P2_H/P2_W)); // height from ratio, preserving aspect
 const PAD_SPEED=5;
 const BALL_SIZE=12;
 const WIN_SCORE=3;
 
 // ── Game state ────────────────────────────────────────────────────
-let p1y,p2y,ball,score1,score2,state,particles;
+let p1y,p2y,ball,score1,score2,state,particles,lastScorer;
 const keys={};
 
 function reset(fullReset=true){
   p1y=H/2-PAD_H/2;
-  p2y=H/2-PAD_H/2;
+  p2y=H/2-PAD2_H/2;
   if(fullReset){ score1=0; score2=0; }
   const angle=(Math.random()*0.8-0.4);
   const dir=Math.random()<0.5?1:-1;
@@ -242,8 +250,16 @@ document.addEventListener('keydown',e=>{
   keys[e.code]=true;
   if(e.code==='Space'){
     e.preventDefault();
-    if(state==='waiting'||state==='win') reset(true);
-    else if(state==='paused') state='playing';
+    if(state==='waiting'){ state='playing'; }
+    else if(state==='win') reset(true);
+    else if(state==='paused'){
+      // Ball flies toward the scorer (positive vx = right = P1 direction, negative = left = P2)
+      const dir = lastScorer===1 ? 1 : -1;
+      const angle = (Math.random()*0.6-0.3);
+      ball.vx = dir * 4.5 * Math.cos(angle);
+      ball.vy = 4.5 * Math.sin(angle);
+      state='playing';
+    }
   }
 });
 document.addEventListener('keyup',e=>keys[e.code]=false);
@@ -321,7 +337,7 @@ function update(){
   if(keys['KeyW']) p1y=Math.max(0,p1y-PAD_SPEED);
   if(keys['KeyS']) p1y=Math.min(H-PAD_H,p1y+PAD_SPEED);
   if(keys['ArrowUp']) p2y=Math.max(0,p2y-PAD_SPEED);
-  if(keys['ArrowDown']) p2y=Math.min(H-PAD_H,p2y+PAD_SPEED);
+  if(keys['ArrowDown']) p2y=Math.min(H-PAD2_H,p2y+PAD_SPEED);
 
   // Ball movement
   ball.x+=ball.vx;
@@ -340,7 +356,7 @@ function update(){
     ball.x=p1right+BALL_SIZE/2;
     const rel=(ball.y-(p1y+PAD_H/2))/(PAD_H/2);
     const angle=rel*0.9;
-    const speed=Math.min(Math.sqrt(ball.vx**2+ball.vy**2)*1.05, 12);
+    const speed=Math.min(Math.sqrt(ball.vx**2+ball.vy**2)*1.08, 16);
     ball.vx=Math.abs(Math.cos(angle)*speed);
     ball.vy=Math.sin(angle)*speed;
     spawnParticles(ball.x,ball.y,'#0057ff');
@@ -351,19 +367,19 @@ function update(){
   if(ball.vx>0 &&
      ball.x+BALL_SIZE/2>=p2left &&
      ball.x-BALL_SIZE/2<=W-6 &&
-     ball.y>=p2y && ball.y<=p2y+PAD_H){
+     ball.y>=p2y && ball.y<=p2y+PAD2_H){
     ball.x=p2left-BALL_SIZE/2;
-    const rel=(ball.y-(p2y+PAD_H/2))/(PAD_H/2);
+    const rel=(ball.y-(p2y+PAD2_H/2))/(PAD2_H/2);
     const angle=rel*0.9;
-    const speed=Math.min(Math.sqrt(ball.vx**2+ball.vy**2)*1.05, 12);
+    const speed=Math.min(Math.sqrt(ball.vx**2+ball.vy**2)*1.08, 16);
     ball.vx=-Math.abs(Math.cos(angle)*speed);
     ball.vy=Math.sin(angle)*speed;
     spawnParticles(ball.x,ball.y,'#ff4d2e');
   }
 
   // Score
-  if(ball.x<0){ score2++; spawnParticles(0,ball.y,'#ff4d2e'); checkWin()||reset(false); return; }
-  if(ball.x>W){ score1++; spawnParticles(W,ball.y,'#0057ff'); checkWin()||reset(false); return; }
+  if(ball.x<0){ score2++; spawnParticles(0,ball.y,'#ff4d2e'); lastScorer=2; if(!checkWin()){ s1El.textContent=score1; s2El.textContent=score2; state='paused'; ball={x:W/2,y:H/2,vx:0,vy:0}; } return; }
+  if(ball.x>W){ score1++; spawnParticles(W,ball.y,'#0057ff'); lastScorer=1; if(!checkWin()){ s1El.textContent=score1; s2El.textContent=score2; state='paused'; ball={x:W/2,y:H/2,vx:0,vy:0}; } return; }
 
   // Particles
   particles.forEach(p=>{ p.x+=p.vx; p.y+=p.vy; p.life-=0.04; p.vx*=0.95; p.vy*=0.95; });
@@ -383,15 +399,16 @@ function loop(){
 
   // Draw paddles as faces
   drawFace(face1,P1_W,P1_H, 6,p1y, PAD1_W,PAD_H);
-  drawFace(face2,P2_W,P2_H, W-PAD2_W-6,p2y, PAD2_W,PAD_H);
+  drawFace(face2,P2_W,P2_H, W-PAD2_W-6,p2y, PAD2_W,PAD2_H);
 
   drawScores();
   drawBall();
   drawParticles();
 
   if(state==='waiting') drawOverlay('PROSA PONG','LEERTASTE zum Starten');
+  else if(state==='paused') drawOverlay('Punkt!','LEERTASTE zum Weiterspielen');
   else if(state==='win'){
-    const winner=score1>=WIN_SCORE?'Spieler 1 🎉':'Spieler 2 🎉';
+    const winner=score1>=WIN_SCORE?'Team 1 🎉':'Team 2 🎉';
     drawOverlay(winner+' gewinnt!','LEERTASTE für Rematch');
   }
 
@@ -400,6 +417,34 @@ function loop(){
 
 reset(true);
 loop();
+
+// Draw face icons in UI
+(function(){
+  // Icon 1 – bald face (P1)
+  const c1=document.getElementById('icon1');
+  const x1=c1.getContext('2d');
+  x1.imageSmoothingEnabled=false;
+  const s1=Math.min(c1.width/P1_W, c1.height/P1_H);
+  const ox1=(c1.width-P1_W*s1)/2, oy1=(c1.height-P1_H*s1)/2;
+  for(let r=0;r<P1_H;r++)
+    for(let c=0;c<P1_W;c++){
+      const col=P1[r]&&P1[r][c]; if(!col) continue;
+      x1.fillStyle=col;
+      x1.fillRect(Math.round(ox1+c*s1),Math.round(oy1+r*s1),Math.ceil(s1)+1,Math.ceil(s1)+1);
+    }
+  // Icon 2 – brown hair (P2)
+  const c2=document.getElementById('icon2');
+  const x2=c2.getContext('2d');
+  x2.imageSmoothingEnabled=false;
+  const s2=Math.min(c2.width/P2_W, c2.height/P2_H);
+  const ox2=(c2.width-P2_W*s2)/2, oy2=(c2.height-P2_H*s2)/2;
+  for(let r=0;r<P2_H;r++)
+    for(let c=0;c<P2_W;c++){
+      const col=P2[r]&&P2[r][c]; if(!col) continue;
+      x2.fillStyle=col;
+      x2.fillRect(Math.round(ox2+c*s2),Math.round(oy2+r*s2),Math.ceil(s2)+1,Math.ceil(s2)+1);
+    }
+})();
 setTimeout(()=>{document.getElementById('splash').style.display='none';},3000);
 </script>
 </body>
