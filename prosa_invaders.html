@@ -197,7 +197,7 @@ const SHIP_RENDER_H=64;
 const SHIP_RENDER_W=Math.round(SHIP_RENDER_H*(SHIP_W/SHIP_H));
 const SHIP_SPEED=5, BULLET_SPEED=9, ABSPEED=3.5;
 
-let ship,aliens,bullets,aBullets,score,lives,level,state,moveDir,moveTimer,dropPending;
+let ship,aliens,bullets,aBullets,score,lives,level,state,moveDir,moveTimer,dropPending,flashTimer;
 const keys={};
 
 function getFormation(lvl){
@@ -370,7 +370,7 @@ function update(){
   // Alien movement
   const alive=aliens.filter(a=>a.alive);
   if(!alive.length){ state='levelup'; return; }
-  const interval=Math.max(10, 52 - level*4);
+  const interval=Math.max(8, 52 - level*6);
   moveTimer++;
   if(moveTimer>=interval){
     moveTimer=0;
@@ -387,7 +387,7 @@ function update(){
   }
 
   // Alien shooting
-  const shootInterval=Math.max(55, 110-level*8);
+  const shootInterval=Math.max(30, 110-level*12);
   aShootTimer++;
   if(aShootTimer>=shootInterval){ aShootTimer=0; alienShoot(); }
 
@@ -410,7 +410,7 @@ function update(){
   aBullets.forEach(b=>{
     const hw=Math.round(SHIP_RENDER_H*SHIP_RATIO)/2, hh=SHIP_RENDER_H/2;
     if(b.x>ship.x-hw&&b.x<ship.x+hw&&b.y>ship.y-hh&&b.y<ship.y+hh){
-      b.y=H+999; lives--;
+      b.y=H+999; lives--; flashTimer=12;
       updateUI();
       if(lives<=0) state='dead';
     }
@@ -443,6 +443,13 @@ function loop(){
   drawBullets();
   drawShip();
   drawHUD();
+
+  // Red flash when hit
+  if(flashTimer>0){
+    ctx.fillStyle=`rgba(255,0,0,${flashTimer/12*0.45})`;
+    ctx.fillRect(0,0,W,H);
+    flashTimer--;
+  }
 
   if(state==='waiting') drawOverlay('PROSA INVADERS','LEERTASTE oder KLICK zum Starten','#00FFAA');
   else if(state==='dead') drawOverlay('GAME OVER','LEERTASTE oder KLICK zum Neustart','#FF3355');
