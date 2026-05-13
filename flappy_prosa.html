@@ -63,6 +63,8 @@
   #ui { display:flex; gap:3rem; margin-top:1rem; color:#777; font-size:14px; }
   #ui b { color:#FFD700; font-size:18px; }
   #hint { margin-top:.5rem; color:#555; font-size:12px; letter-spacing:.05em; }
+  #back { margin-top:1rem; font-size:11px; color:#999; text-decoration:none; letter-spacing:.08em; text-transform:uppercase; }
+  #back:hover { color:#FFD700; }
 </style>
 </head>
 <body>
@@ -263,5 +265,6 @@ function loop(){
 reset();loop();
 setTimeout(()=>{document.getElementById('splash').style.display='none';},2600);
 </script>
+<a id="back" href="index.html">← Zurück zum Menü</a>
 </body>
 </html>

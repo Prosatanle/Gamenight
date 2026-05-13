@@ -59,6 +59,8 @@
     opacity:0; animation:subFade .4s ease 1.1s forwards;
   }
   @keyframes subFade { to { opacity:1; } }
+  #back { margin-top:1rem; font-size:11px; color:#999; text-decoration:none; letter-spacing:.08em; text-transform:uppercase; }
+  #back:hover { color:#FFD700; }
 </style>
 </head>
 <body>
@@ -426,5 +428,6 @@ reset();
 loop();
 setTimeout(()=>{ document.getElementById('splash').style.display='none'; },3000);
 </script>
+<a id="back" href="index.html">← Zurück zum Menü</a>
 </body>
 </html>
