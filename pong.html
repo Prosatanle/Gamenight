@@ -19,10 +19,12 @@
     border:3px solid #111; cursor:none;
     image-rendering:pixelated;
     box-shadow: 4px 4px 0 #111;
+    max-width: 95vw;
+    max-height: 75vh;
   }
   #ui {
     display:flex; justify-content:space-between;
-    width:540px; margin-top:.8rem;
+    width:720px; max-width:95vw; margin-top:.8rem;
     font-size:13px; color:#555;
   }
   #ui b { color:#111; font-size:16px; }
@@ -56,7 +58,7 @@
 </head>
 <body>
 <div id="wrap">
-  <canvas id="c" width="540" height="400"></canvas>
+  <canvas id="c" width="720" height="520"></canvas>
   <div id="splash">
     <div id="splash-title">PROSA PONG</div>
     <div id="splash-sub">Bereit? Drückt LEERTASTE!</div>
@@ -79,7 +81,7 @@
 const canvas=document.getElementById('c');
 const ctx=canvas.getContext('2d');
 ctx.imageSmoothingEnabled=false;
-const W=540,H=400;
+const W=720,H=520;
 const s1El=document.getElementById('s1');
 const s2El=document.getElementById('s2');
 
@@ -202,7 +204,7 @@ const face1=makeOffscreen(P1,P1_W,P1_H); // bald
 const face2=makeOffscreen(P2,P2_W,P2_H); // brown hair
 
 // ── Paddle sizes ──────────────────────────────────────────────────
-const PAD_H=72; // rendered height for P1
+const PAD_H=96; // rendered height for P1
 const PAD1_W=Math.round(PAD_H*(P1_W/P1_H)); // bald face: 72*(23/27)=61px wide
 // P2: match P1_W width, derive height from P2 grid ratio to preserve aspect
 const PAD2_W=Math.round(PAD1_W*1.2); // 20% wider than P1
@@ -348,7 +350,7 @@ function update(){
   if(ball.y+BALL_SIZE/2>=H){ ball.y=H-BALL_SIZE/2; ball.vy=-Math.abs(ball.vy); }
 
   // Paddle 1 (left) collision
-  const p1right=PAD1_W+6;
+  const p1right=PAD1_W+6+10; // include gold bar width
   if(ball.vx<0 &&
      ball.x-BALL_SIZE/2<=p1right &&
      ball.x+BALL_SIZE/2>=6 &&
@@ -363,7 +365,7 @@ function update(){
   }
 
   // Paddle 2 (right) collision
-  const p2left=W-PAD2_W-6;
+  const p2left=W-PAD2_W-6-10; // include gold bar width
   if(ball.vx>0 &&
      ball.x+BALL_SIZE/2>=p2left &&
      ball.x-BALL_SIZE/2<=W-6 &&
@@ -393,9 +395,31 @@ function checkWin(){
   return false;
 }
 
+function roundRect(ctx, x, y, w, h, r){
+  ctx.beginPath();
+  ctx.moveTo(x+r, y);
+  ctx.lineTo(x+w-r, y);
+  ctx.quadraticCurveTo(x+w, y, x+w, y+r);
+  ctx.lineTo(x+w, y+h-r);
+  ctx.quadraticCurveTo(x+w, y+h, x+w-r, y+h);
+  ctx.lineTo(x+r, y+h);
+  ctx.quadraticCurveTo(x, y+h, x, y+h-r);
+  ctx.lineTo(x, y+r);
+  ctx.quadraticCurveTo(x, y, x+r, y);
+  ctx.closePath();
+  ctx.fill();
+}
+
 function loop(){
   drawBg();
   update();
+
+  // Gold bars in front of paddles
+  const BAR_W=6, BAR_H=70, BAR_R=3;
+  ctx.fillStyle='#DDB200';
+  // Both bars same size, centered on their respective paddle
+  roundRect(ctx, 6+PAD1_W+2, p1y+(PAD_H-BAR_H)/2, BAR_W, BAR_H, BAR_R);
+  roundRect(ctx, W-PAD2_W-6-BAR_W-2, p2y+(PAD2_H-BAR_H)/2, BAR_W, BAR_H, BAR_R);
 
   // Draw paddles as faces
   drawFace(face1,P1_W,P1_H, 6,p1y, PAD1_W,PAD_H);
