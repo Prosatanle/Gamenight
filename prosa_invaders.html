@@ -23,6 +23,9 @@
     border:3px solid #222;
     image-rendering:pixelated;
     cursor:crosshair;
+    max-width: 95vw;
+    max-height: 60vh;
+    touch-action: none;
   }
   #ui {
     display:flex;
@@ -61,6 +64,48 @@
   @keyframes subFade { to { opacity:1; } }
   #back { margin-top:1rem; font-size:11px; color:#999; text-decoration:none; letter-spacing:.08em; text-transform:uppercase; }
   #back:hover { color:#FFD700; }
+
+  /* Touch controls */
+  #touch-controls {
+    display: none;
+    gap: 12px;
+    margin-top: 12px;
+    align-items: center;
+    justify-content: center;
+  }
+  @media (pointer: coarse) {
+    #touch-controls { display: flex; }
+    #hint { display: none; }
+  }
+  .touch-btn {
+    background: #1a1a2e;
+    border: 2px solid #444;
+    border-radius: 12px;
+    color: #fff;
+    font-size: 26px;
+    width: 72px;
+    height: 72px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+    transition: background 0.1s;
+    box-shadow: 0 3px 0 #000;
+  }
+  .touch-btn:active { background: #333; transform: translateY(2px); box-shadow: none; }
+  .touch-btn.shoot {
+    background: #00c87a;
+    border-color: #00c87a;
+    width: 90px;
+    height: 72px;
+    font-size: 22px;
+    font-family: monospace;
+    font-weight: bold;
+  }
+  .touch-btn.shoot:active { background: #009a5e; }
 </style>
 </head>
 <body>
@@ -78,6 +123,11 @@
   Level: <b id="lv2">1</b>
 </div>
 <div id="hint">← → Bewegen &nbsp;|&nbsp; LEERTASTE oder KLICK zum Schießen</div>
+<div id="touch-controls">
+  <button class="touch-btn" id="btn-left">◀</button>
+  <button class="touch-btn shoot" id="btn-shoot">FEUER 🔥</button>
+  <button class="touch-btn" id="btn-right">▶</button>
+</div>
 
 <script>
 const canvas=document.getElementById('c');
@@ -511,6 +561,56 @@ function loop(){
 
 reset();
 loop();
+
+// ── Touch controls ────────────────────────────────────────────────
+const touchKeys = { left: false, right: false };
+
+function addTouchBtn(id, onStart, onEnd) {
+  const btn = document.getElementById(id);
+  if (!btn) return;
+  btn.addEventListener('touchstart', e => { e.preventDefault(); onStart(); }, { passive: false });
+  btn.addEventListener('touchend',   e => { e.preventDefault(); onEnd && onEnd(); }, { passive: false });
+  btn.addEventListener('mousedown',  e => { onStart(); });
+  btn.addEventListener('mouseup',    e => { onEnd && onEnd(); });
+}
+
+addTouchBtn('btn-left',
+  () => { touchKeys.left = true; },
+  () => { touchKeys.left = false; }
+);
+addTouchBtn('btn-right',
+  () => { touchKeys.right = true; },
+  () => { touchKeys.right = false; }
+);
+addTouchBtn('btn-shoot',
+  () => {
+    if (state === 'waiting') state = 'playing';
+    else if (state === 'playing') shoot();
+    else if (state === 'dead') reset();
+    else if (state === 'levelup') {
+      level++; bullets=[]; aBullets=[];
+      initAliens(); moveDir=1; moveTimer=0; dropPending=false;
+      aShootTimer=0; state='playing'; updateUI();
+    }
+  },
+  null
+);
+
+// Hook touch keys into movement
+const _origUpdate = update;
+// Patch movement to also read touchKeys
+const _moveShip = () => {
+  if (state !== 'playing') return;
+  if (touchKeys.left)  ship.x = Math.max(SHIP_RENDER_W/2, ship.x - SHIP_SPEED);
+  if (touchKeys.right) ship.x = Math.min(W - SHIP_RENDER_W/2, ship.x + SHIP_SPEED);
+};
+// Run touch movement every frame via requestAnimationFrame patch
+const _origLoop = loop;
+function touchLoop() {
+  _moveShip();
+  requestAnimationFrame(touchLoop);
+}
+touchLoop();
 setTimeout(()=>{ document.getElementById('splash').style.display='none'; },3000);
 </script>
 <a id="back" href="index.html">← Zurück zum Menü</a>
