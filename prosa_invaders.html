@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prosa Invaders</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background:#0a0a1a;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    min-height:100vh;
+    font-family:monospace;
+    user-select:none;
+  }
+  #wrap { position:relative; }
+  canvas {
+    display:block;
+    border-radius:14px;
+    border:3px solid #222;
+    image-rendering:pixelated;
+    cursor:crosshair;
+  }
+  #ui {
+    display:flex;
+    gap:2rem;
+    margin-top:.8rem;
+    color:#555;
+    font-size:13px;
+  }
+  #ui b { color:#FFD700; font-size:17px; }
+  #hint { margin-top:.4rem; color:#444; font-size:11px; letter-spacing:.05em; }
+
+  #splash {
+    position:absolute; inset:0; border-radius:11px;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    pointer-events:none; z-index:10;
+    animation: splashFull 2.8s ease forwards;
+  }
+  @keyframes splashFull {
+    0%   { background:rgba(0,0,0,0);    opacity:0; }
+    14%  { background:rgba(0,0,30,0.95);opacity:1; }
+    72%  { background:rgba(0,0,30,0.95);opacity:1; }
+    100% { background:rgba(0,0,0,0);    opacity:0; }
+  }
+  #splash-title {
+    font-size:40px; font-weight:bold; color:#00FFAA;
+    letter-spacing:4px;
+    opacity:0; transform:scale(0.4);
+    text-shadow:0 0 24px rgba(0,255,170,0.7);
+    animation:titlePop .55s cubic-bezier(0.34,1.56,0.64,1) .4s forwards;
+  }
+  @keyframes titlePop { to { opacity:1; transform:scale(1); } }
+  #splash-sub {
+    font-size:13px; color:#88aaaa; margin-top:14px;
+    opacity:0; animation:subFade .4s ease 1.1s forwards;
+  }
+  @keyframes subFade { to { opacity:1; } }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="c" width="600" height="720"></canvas>
+  <div id="splash">
+    <div id="splash-title">PROSA INVADERS</div>
+    <div id="splash-sub">← → Bewegen &nbsp;|&nbsp; LEERTASTE Schießen</div>
+  </div>
+</div>
+<div id="ui">
+  Punkte: <b id="sc">0</b> &nbsp;|&nbsp;
+  Rekord: <b id="bs">0</b> &nbsp;|&nbsp;
+  Leben: <b id="lv">❤❤❤</b> &nbsp;|&nbsp;
+  Level: <b id="lv2">1</b>
+</div>
+<div id="hint">← → Bewegen &nbsp;|&nbsp; LEERTASTE oder KLICK zum Schießen</div>
+
+<script>
+const canvas=document.getElementById('c');
+const ctx=canvas.getContext('2d');
+ctx.imageSmoothingEnabled=false;
+const W=600, H=720;
+
+let best=0;
+try{best=parseInt(localStorage.getItem('prosInvaders')||'0');}catch(e){}
+document.getElementById('bs').textContent=best;
+
+// ── City alien – 20×20, ratio 1.071 ──────────────────────────────
+const N=null;
+const CITY_W=20, CITY_H=20, CITY_RATIO=1.0705;
+const CITY=[
+  ['#e9e7e7',N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N],
+  ['#e9e7e7',N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N],
+  ['#e9e8e8',N,N,N,N,N,N,N,N,N,'#d9d9d9','#bfbfbf',N,N,N,N,'#dfdfdf','#d4d4d4',N,N],
+  ['#e9e8e8',N,N,N,N,N,N,N,N,'#c3c3c3','#848484','#7e7e7e','#a4a4a4',N,N,N,'#d2d2d2','#bfbfbf',N,N],
+  ['#e9e8e8',N,N,N,N,N,N,N,'#b8b8b8','#7a7a7a','#878787','#8a8a8a','#7d7d7d','#929292',N,N,'#aeaeae','#a4a4a4','#eaeaea',N],
+  ['#e9e8e8',N,N,N,N,N,N,N,'#a2a2a2','#8d8d8d','#939393','#8a8a8a','#989898','#858585',N,'#c4c4c4','#6e6e6e','#707070','#adadad',N],
+  ['#eae8e8',N,N,N,N,N,N,N,'#a3a3a3','#a2a2a2','#a8a8a8','#8f8f8f','#b6b6b6','#929292','#bfbfbf','#585858','#595959','#5a5a5a','#535353','#b8b8b8'],
+  ['#eae8e8',N,N,N,N,'#cdcdcd',N,N,'#a4a4a4','#9d9d9d','#a3a3a3','#8e8e8e','#b0b0b0','#8b8b8b','#d3d3d3','#c7c7c7','#c4c4c4','#c6c6c6','#c2c2c2','#dbdbdb'],
+  ['#eae8e8',N,N,N,N,'#a4a4a4','#a4a4a4','#d6d6d6','#a1a1a1','#a0a0a0','#a6a6a6','#8e8e8e','#b2b2b2','#898989','#dbdbdb','#e7e7e7','#ededed','#e7e7e7','#e8e8e8',N],
+  ['#eae8e8',N,N,N,N,'#adadad','#9d9d9d','#9c9c9c','#999999','#a3a3a3','#9a9a9a','#909090','#b2b2b2','#8a8a8a','#d7d7d7','#d5d5d5','#e1e1e1','#d8d8d8','#d8d8d8','#ededed'],
+  ['#eae8e8',N,N,N,N,'#a8a8a8','#b5b5b5','#bbbbbb','#bdbdbd','#b3b3b3','#929292','#939393','#b1b1b1','#8a8a8a','#d8d8d8','#d9d9d9','#e3e3e3','#dbdbdb','#dbdbdb','#eeeeee'],
+  ['#ebe9e9',N,'#ebebeb','#ededed','#e9e9e9','#a5a5a5','#bcbcbc','#c1c1c1','#c3c3c3','#bbbbbb','#9c9c9c','#949494','#b1b1b1','#8a8a8a','#d8d8d8','#d9d9d9','#e3e3e3','#dbdbdb','#dcdcdc','#eeeeee'],
+  ['#eeeded','#8a8a8a','#585858','#636363','#676767','#9b9b9b','#bdbdbd','#bebebe','#c1c1c1','#b9b9b9','#9a9a9a','#949494','#b1b1b1','#8a8a8a','#d7d7d7','#d6d6d6','#e2e2e2','#dbdbdb','#dbdbdb','#eeeeee'],
+  ['#edebeb','#909090','#646464','#606060','#616161','#9b9b9b','#bdbdbd','#bfbfbf','#c1c1c1','#b9b9b9','#9a9a9a','#949494','#b2b2b2','#8a8a8a','#d8d8d8','#dcdcdc','#e4e4e4','#dadada','#dbdbdb','#eeeeee'],
+  ['#edecec','#939393','#676666','#626262','#636363','#9a9a9a','#bfbfbf','#c1c1c1','#c4c4c4','#bbbbbb','#9a9a9a','#949494','#b1b1b1','#8a8a8a','#d7d7d7','#d9d9d9','#e5e5e5','#dddddd','#dcdcdc','#eeeeee'],
+  ['#edecec','#929292','#666666','#626262','#626262','#9c9c9c','#b6b6b6','#b8b8b8','#bababa','#b3b3b3','#9c9c9c','#939393','#b1b1b1','#888888','#dfdfdf','#dfdfdf','#cccccc','#cfcfcf','#e7e7e7','#eeeeee'],
+  ['#edecec','#929292','#666666','#626262','#616161','#9e9e9e','#a6a6a6','#b1b1b1','#b1b1b1','#a5a5a5','#9e9e9e','#949494','#b5b5b5','#888888','#dfdfdf','#d1d1d1','#bbbbbb','#bdbdbd','#e1e1e1',N],
+  ['#edebeb','#959595','#6a6a6a','#646464','#636363','#9f9f9f','#acacac','#b8b8b8','#b8b8b8','#aaaaaa','#9f9f9f','#919191','#a6a6a6','#898989','#dfdfdf','#d4d4d4','#bfbfbf','#c1c1c1','#e3e3e3',N],
+  ['#eeecec','#858585','#535353','#585858','#595959','#999999','#a5a5a5','#b2b2b2','#b2b2b2','#a3a3a3','#9b9b9b','#818181','#7c7c7c','#818181','#dedede','#d1d1d1','#bababa','#bdbdbd','#e0e0e0','#eeeeee'],
+  ['#ecebeb','#c5c5c5','#a8a8a8','#b0b0b0','#b1b1b1','#cecece','#d5d5d5','#dbdbdb','#dbdbdb','#d4d4d4','#cfcfcf','#c4c4c4','#c5c5c5','#c5c5c5',N,'#e9e9e9','#dfdfdf','#e0e0e0',N,N],
+];
+
+// Pre-render city to offscreen canvas
+const cityOff=document.createElement('canvas');
+cityOff.width=CITY_W; cityOff.height=CITY_H;
+const cCtx=cityOff.getContext('2d');
+cCtx.imageSmoothingEnabled=false;
+for(let r=0;r<CITY_H;r++)
+  for(let c=0;c<CITY_W;c++){
+    const col=CITY[r]&&CITY[r][c];
+    if(!col)continue;
+    // tint the greys to a slightly more colourful palette per row to distinguish waves
+    cCtx.fillStyle=col;
+    cCtx.fillRect(c,r,1,1);
+  }
+
+// ── Ship: pixel face (26x21, ratio 0.756 from input) ────────────────────
+const SHIP_W=26, SHIP_H=21, SHIP_RATIO=0.7558;
+const SHIP=[
+  [N,N,N,N,N,N,'#261d18','#45362e','#372a24','#2c1c17','#48362f','#594740','#655249','#6b574c','#57443b','#312621',N,N,N,N,N,N,N,N,N,N],
+  [N,N,N,N,N,'#564034','#735a4e','#614a3f','#775648','#976c58','#966855','#906451','#755344','#654f45','#6e5d54','#7d685c','#695347','#372a24',N,N,N,N,N,N,N,N],
+  [N,N,N,N,'#5b4237','#654b3f','#3a2119','#936551','#f0b698','#fac2a2','#fec5a5','#fec4a4','#f2b89a','#cb967b','#7a584a','#5c4b44','#69564c','#755b4f','#604e46','#130e0d',N,N,N,N,N,N],
+  [N,N,N,'#5b453b','#6c5447','#39261e','#895d4b','#ffc5a4','#f8c2a3','#f6bfa0','#f3bc9d','#f0ba9b','#f3bd9d','#fdc6a5','#f9be9d','#a4755f','#533f38','#5b4840','#5e473c','#645149',N,N,N,N,N,N],
+  [N,N,'#422e25','#674b3d','#493228','#4f2d23','#dea287','#ecb698','#dea88b','#dca78a','#eab497','#f5bd9f','#f4bc9e','#eab396','#e8b395','#fdc3a3','#9b6d5a','#46322c','#40261d','#71584b','#3d2d26',N,N,N,N,N],
+  [N,N,'#50362b','#674f43','#362019','#613a2d','#e4a684','#c89473','#b9896b','#af7e61','#c69173','#f6c09d','#e6ae8e','#af7b60','#b08164','#c29071','#d69e7c','#5d3e2f','#482e23','#492f24','#664a3b',N,N,N,N,N],
+  [N,N,'#513b2f','#614537','#240e0a','#68412e','#e2aa77','#c99277','#95786b','#ae8778','#d69d74','#dca780','#d8a273','#cb9678','#94776b','#a58072','#dba076','#926845','#452920','#3b2219','#6a4a3a','#3f2f27',N,N,N,N],
+  [N,'#0f0908','#543a2d','#5e4135','#230f0a','#75473a','#e8ab87','#e2ab80','#edb38a','#e4ab83','#dda279','#f7bfa5','#ebb190','#d99e76','#eab188','#e9af87','#e7ae83','#a16b57','#311711','#442a20','#55372b','#684837','#231712',N,N,N],
+  [N,'#3a251d','#735444','#5b4237','#44261c','#9e634d','#e0a285','#e5ac8c','#d89c79','#d89b7a','#cb8f76','#cc937a','#c98e75','#d3977b','#db9f7b','#dea482','#ecaf91','#b0745d','#3f2119','#382018','#4f3327','#4f3326','#3b2820','#130c0a',N,N],
+  ['#190e0b','#402e25','#6b4e3f','#55372a','#472b21','#593227','#c28368','#dd9e81','#da9f84','#d89e85','#cd8e79','#b97765','#bf7e6b','#d69a83','#dda389','#dfa488','#d69476','#653b2e','#381f17','#3f251d','#5f4539','#391e15','#483128',N,N,N],
+  [N,'#281b16','#684837','#4d3125','#4a2d22','#1e0b07','#6a4133','#e7a384','#f5b898','#e8b094','#dfa58c','#e0a38c','#dfa28b','#e3ab91','#f1b99a','#f7b493','#8f5c49','#2b150f','#52372c','#563d32','#664c3f','#63493c','#36241e',N,N,N],
+  [N,N,'#543629','#583a2d','#472b20','#361d16','#26110c','#51342a','#ae7760','#e8ab8d','#fec3a2','#fec2a0','#fec2a1','#f7bb9b','#cd9277','#684437','#26100b','#4c2f24','#644433','#52392e','#60463a','#654b3e','#5e4539','#18100d',N,N],
+  [N,'#2c1b15','#593b2e','#634434','#4b2f24','#311912','#2f1711',N,N,'#251712','#4a3229','#4e362c','#4d352b','#3c261f',N,N,'#371e16','#482c21','#41261c','#482a20','#492f26','#664d42','#6d4b3a','#4f3529','#120b09',N],
+  [N,'#3f2a22','#5c3d2f','#533629','#3c2119','#331812','#28130e',N,N,N,N,N,N,N,N,'#180f0c','#44271e','#3a2119','#41261d','#4a2f23','#321911','#604132','#4f382c','#291914','#2a1b16','#170f0b'],
+  ['#241713','#55382c','#533527','#482d23','#2d1813','#150a08',N,N,N,N,N,N,N,N,N,'#341f18','#3a2018','#452b23','#4d3126','#40271e','#3d231a','#5b3b2d','#352019','#20110d','#281a15',N],
+  ['#19100e','#160d0a','#2c1d17','#180f0d',N,N,N,N,N,N,N,N,N,N,'#301d17','#3a2017','#341b14','#5a3e30','#3a2218','#583c2f','#4b3024','#54382b','#503427','#332019',N,N],
+  [N,N,N,'#110b0a',N,N,N,N,N,N,N,N,N,'#181210','#38221b','#351d14','#3b221a','#56392d','#4a3026','#41271d','#674939','#6a4e3f','#543a2f','#35211a',N,N],
+  [N,N,N,N,N,N,N,N,N,N,N,N,N,'#0f0b0a','#37211a','#482d23','#54372c','#41271d','#5b3f33','#503529','#6e5140','#563b2e','#52372a','#291a15',N,N],
+  [N,N,N,N,N,N,N,N,N,N,N,N,N,N,'#36221b','#5d3f30','#5d4032','#4b3125','#4e3326','#553a2c','#4f3528','#5a3e30','#55392c',N,N,N],
+  [N,N,N,N,N,N,N,N,N,N,N,N,N,N,'#1b1310','#4a2d22','#381e16','#44291f','#3d2219','#452a20','#44291e','#533729','#3e231a',N,N,N],
+  [N,N,N,N,N,N,N,N,N,N,N,N,N,N,'#170c0a','#331f18','#4a2e23','#331913','#472b20','#3d241c','#351d16','#3e241b','#291a15',N,N,N],
+];
+
+const shipOff=document.createElement('canvas');
+shipOff.width=SHIP_W; shipOff.height=SHIP_H;
+const sCtx=shipOff.getContext('2d');
+sCtx.imageSmoothingEnabled=false;
+for(let r=0;r<SHIP_H;r++)
+  for(let c=0;c<SHIP_W;c++){
+    const col=SHIP[r]&&SHIP[r][c];
+    if(!col)continue;
+    sCtx.fillStyle=col;
+    sCtx.fillRect(c,r,1,1);
+  }
+
+// ── Tint offscreens per row for variety ──────────────────────────
+// Row 0: blue-ish tint, Row 1: red tint, Row 2-4: default
+function makeTintedCity(tint){
+  const tc=document.createElement('canvas');
+  tc.width=CITY_W; tc.height=CITY_H;
+  const tx=tc.getContext('2d');
+  tx.drawImage(cityOff,0,0);
+  tx.globalCompositeOperation='multiply';
+  tx.fillStyle=tint;
+  tx.fillRect(0,0,CITY_W,CITY_H);
+  tx.globalCompositeOperation='source-over';
+  return tc;
+}
+const cityTints=[
+  makeTintedCity('#aaddff'), // row0 – blue
+  makeTintedCity('#ffaacc'), // row1 – pink
+  makeTintedCity('#aaffcc'), // row2 – green
+  makeTintedCity('#ffffaa'), // row3 – yellow
+  makeTintedCity('#ddaaff'), // row4 – purple
+];
+
+// ── Game ──────────────────────────────────────────────────────────
+const COLS=8, ROWS=5;
+const ALIEN_H=48;
+const ALIEN_W=Math.round(ALIEN_H*CITY_RATIO);
+const CELL_W=68, CELL_H=64;
+const SHIP_RENDER_H=64;
+const SHIP_RENDER_W=Math.round(SHIP_RENDER_H*(SHIP_W/SHIP_H));
+const SHIP_SPEED=5, BULLET_SPEED=9, ABSPEED=3.5;
+
+let ship,aliens,bullets,aBullets,score,lives,level,state,moveDir,moveTimer,dropPending;
+const keys={};
+
+function initAliens(){
+  aliens=[];
+  const startX=W/2 - (COLS*CELL_W)/2 + CELL_W/2;
+  for(let r=0;r<ROWS;r++)
+    for(let c=0;c<COLS;c++)
+      aliens.push({
+        x:startX+c*CELL_W, y:80+r*CELL_H,
+        col:c, row:r, alive:true,
+        pts:(ROWS-r)*10,
+        tint:r%cityTints.length
+      });
+}
+
+function reset(){
+  ship={x:W/2, y:H-58};
+  bullets=[]; aBullets=[];
+  score=0; lives=3; level=1;
+  state='waiting';
+  moveDir=1; moveTimer=0; dropPending=false;
+  initAliens();
+  updateUI();
+}
+
+function updateUI(){
+  document.getElementById('sc').textContent=score;
+  document.getElementById('bs').textContent=best;
+  document.getElementById('lv').textContent='❤'.repeat(Math.max(0,lives));
+  document.getElementById('lv2').textContent=level;
+}
+
+document.addEventListener('keydown',e=>{
+  keys[e.code]=true;
+  if(e.code==='Space'){
+    e.preventDefault();
+    if(state==='waiting'){state='playing';}
+    else if(state==='playing') shoot();
+    else if(state==='dead'||state==='win') reset();
+  }
+});
+document.addEventListener('keyup',e=>{ keys[e.code]=false; });
+canvas.addEventListener('click',()=>{
+  if(state==='waiting'){state='playing';}
+  else if(state==='playing') shoot();
+  else if(state==='dead'||state==='win') reset();
+});
+
+let lastShot=0;
+function shoot(){
+  if(Date.now()-lastShot<320)return;
+  lastShot=Date.now();
+  bullets.push({x:ship.x,y:ship.y-SHIP_RENDER_H/2});
+}
+
+let aShootTimer=0;
+function alienShoot(){
+  const alive=aliens.filter(a=>a.alive);
+  if(!alive.length)return;
+  const cols=[...new Set(alive.map(a=>a.col))];
+  const col=cols[Math.floor(Math.random()*cols.length)];
+  const bottom=alive.filter(a=>a.col===col).sort((a,b)=>b.row-a.row)[0];
+  if(bottom) aBullets.push({x:bottom.x,y:bottom.y+ALIEN_H/2});
+}
+
+// stars array
+const STARS=Array.from({length:70},(_,i)=>({
+  x:(i*173+11)%W, y:(i*97+31)%H,
+  s:i%4===0?2:1, b:0.3+Math.random()*0.6
+}));
+
+function drawBg(){
+  ctx.fillStyle='#06061a';
+  ctx.fillRect(0,0,W,H);
+  STARS.forEach(s=>{
+    ctx.fillStyle=`rgba(255,255,255,${s.b})`;
+    ctx.fillRect(s.x,s.y,s.s,s.s);
+  });
+}
+
+function drawAliens(){
+  aliens.filter(a=>a.alive).forEach(a=>{
+    ctx.imageSmoothingEnabled=false;
+    ctx.drawImage(cityTints[a.tint], a.x-ALIEN_W/2, a.y-ALIEN_H/2, ALIEN_W, ALIEN_H);
+  });
+}
+
+function drawShip(){
+  const dh=SHIP_RENDER_H;
+  const dw=Math.round(SHIP_RENDER_H*SHIP_RATIO);
+  ctx.imageSmoothingEnabled=false;
+  ctx.drawImage(shipOff, ship.x-dw/2, ship.y-dh/2, dw, dh);
+  // engine glow
+  const t=Date.now()/120;
+  ctx.fillStyle=`rgba(80,200,255,${0.35+Math.sin(t)*0.15})`;
+  ctx.beginPath();
+  ctx.ellipse(ship.x, ship.y+SHIP_RENDER_H/2+3, 7, 4, 0, 0, Math.PI*2);
+  ctx.fill();
+}
+
+function drawBullets(){
+  bullets.forEach(b=>{
+    const g=ctx.createLinearGradient(b.x,b.y-16,b.x,b.y);
+    g.addColorStop(0,'#00ffee'); g.addColorStop(1,'rgba(0,255,200,0)');
+    ctx.fillStyle=g; ctx.fillRect(b.x-2,b.y-16,4,16);
+  });
+  aBullets.forEach(b=>{
+    const g=ctx.createLinearGradient(b.x,b.y,b.x,b.y+14);
+    g.addColorStop(0,'#ff3366'); g.addColorStop(1,'rgba(255,50,100,0)');
+    ctx.fillStyle=g; ctx.fillRect(b.x-2,b.y,4,14);
+  });
+}
+
+function drawHUD(){
+  ctx.textAlign='left';
+  ctx.font='bold 15px monospace';
+  ctx.fillStyle='#00ffaa';
+  ctx.fillText('LEVEL '+level,14,22);
+}
+
+function drawOverlay(title,sub,col){
+  ctx.fillStyle='rgba(0,0,20,0.7)'; ctx.fillRect(0,0,W,H);
+  ctx.textAlign='center';
+  ctx.font='bold 36px monospace'; ctx.fillStyle=col||'#00ffaa';
+  ctx.fillText(title,W/2,H/2-28);
+  ctx.font='15px monospace'; ctx.fillStyle='#ccc';
+  ctx.fillText(sub,W/2,H/2+12);
+  ctx.font='13px monospace'; ctx.fillStyle='#FFD700';
+  ctx.fillText('Rekord: '+best,W/2,H/2+40);
+}
+
+function update(){
+  if(state!=='playing')return;
+
+  // Ship movement
+  if(keys['ArrowLeft']||keys['KeyA']) ship.x=Math.max(SHIP_RENDER_W/2, ship.x-SHIP_SPEED);
+  if(keys['ArrowRight']||keys['KeyD']) ship.x=Math.min(W-SHIP_RENDER_W/2, ship.x+SHIP_SPEED);
+
+  // Bullets
+  bullets.forEach(b=>b.y-=BULLET_SPEED);
+  bullets=bullets.filter(b=>b.y>-10);
+  aBullets.forEach(b=>b.y+=ABSPEED);
+  aBullets=aBullets.filter(b=>b.y<H+10);
+
+  // Alien movement
+  const alive=aliens.filter(a=>a.alive);
+  if(!alive.length){ state='win'; return; }
+  const interval=Math.max(6, 38 - level*5);
+  moveTimer++;
+  if(moveTimer>=interval){
+    moveTimer=0;
+    if(dropPending){
+      alive.forEach(a=>a.y+=22);
+      dropPending=false;
+    } else {
+      const lx=Math.min(...alive.map(a=>a.x));
+      const rx=Math.max(...alive.map(a=>a.x));
+      if(rx+ALIEN_W/2>=W-8&&moveDir===1){ moveDir=-1; dropPending=true; }
+      else if(lx-ALIEN_W/2<=8&&moveDir===-1){ moveDir=1; dropPending=true; }
+      else alive.forEach(a=>a.x+=moveDir*14);
+    }
+  }
+
+  // Alien shooting
+  const shootInterval=Math.max(40, 80-level*8);
+  aShootTimer++;
+  if(aShootTimer>=shootInterval){ aShootTimer=0; alienShoot(); }
+
+  // Bullet ↔ alien collision
+  bullets.forEach(b=>{
+    aliens.filter(a=>a.alive).forEach(a=>{
+      if(b.x>a.x-ALIEN_W/2&&b.x<a.x+ALIEN_W/2&&b.y>a.y-ALIEN_H/2&&b.y<a.y+ALIEN_H/2){
+        a.alive=false; b.y=-999;
+        score+=a.pts;
+        if(score>best){ best=score; }
+        updateUI();
+        // small explosion flash
+        ctx.fillStyle='rgba(255,220,0,0.6)';
+        ctx.beginPath(); ctx.arc(a.x,a.y,18,0,Math.PI*2); ctx.fill();
+      }
+    });
+  });
+
+  // Alien bullet ↔ ship
+  aBullets.forEach(b=>{
+    const hw=Math.round(SHIP_RENDER_H*SHIP_RATIO)/2, hh=SHIP_RENDER_H/2;
+    if(b.x>ship.x-hw&&b.x<ship.x+hw&&b.y>ship.y-hh&&b.y<ship.y+hh){
+      b.y=H+999; lives--;
+      updateUI();
+      if(lives<=0) state='dead';
+    }
+  });
+
+  // Aliens reach ground
+  if(alive.some(a=>a.y+ALIEN_H/2>=H-65)) state='dead';
+}
+
+function loop(){
+  drawBg();
+  update();
+
+  if(state==='win'){
+    // show brief "next level" screen then continue
+    ctx.fillStyle='rgba(0,0,20,0.6)'; ctx.fillRect(0,0,W,H);
+    ctx.textAlign='center'; ctx.font='bold 30px monospace'; ctx.fillStyle='#FFD700';
+    ctx.fillText('LEVEL '+(level+1)+' KOMMT …',W/2,H/2);
+    requestAnimationFrame(loop);
+    setTimeout(()=>{
+      level++; bullets=[]; aBullets=[];
+      initAliens(); moveDir=1; moveTimer=0; dropPending=false;
+      state='playing'; updateUI();
+    },1400);
+    return;
+  }
+
+  drawAliens();
+  drawBullets();
+  drawShip();
+  drawHUD();
+
+  if(state==='waiting') drawOverlay('PROSA INVADERS','LEERTASTE oder KLICK zum Starten','#00FFAA');
+  else if(state==='dead') drawOverlay('GAME OVER','LEERTASTE oder KLICK zum Neustart','#FF3355');
+
+  requestAnimationFrame(loop);
+}
+
+reset();
+loop();
+setTimeout(()=>{ document.getElementById('splash').style.display='none'; },3000);
+</script>
+</body>
+</html>
