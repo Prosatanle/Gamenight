@@ -3,94 +3,394 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Flappy Prosa</title>
+<title>Prosa Game Night</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
 <style>
+  :root {
+    --bg: #f4f2ee;
+    --card: #ffffff;
+    --ink: #111111;
+    --ink2: #555555;
+    --accent1: #ff4d2e;
+    --accent2: #0057ff;
+    --accent3: #00c87a;
+    --border: #e0ddd8;
+    --shadow: 0 2px 0 #111;
+  }
+
   * { margin:0; padding:0; box-sizing:border-box; }
+
   body {
-    background:#111;
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    justify-content:center;
-    min-height:100vh;
-    font-family:monospace;
-    user-select:none;
+    background: var(--bg);
+    font-family: 'Space Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
   }
-  #wrap { position:relative; }
-  canvas {
-    display:block;
-    border-radius:14px;
-    border:3px solid #333;
-    cursor:pointer;
-    image-rendering:pixelated;
+
+  /* ── Grain overlay ── */
+  body::before {
+    content:'';
+    position:fixed; inset:0; z-index:0; pointer-events:none;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    opacity: 0.4;
   }
-  #splash {
-    position:absolute;
-    inset:0;
-    border-radius:11px;
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    justify-content:center;
-    pointer-events:none;
-    z-index:10;
-    animation: splashFull 2.4s ease forwards;
+
+  .page { position:relative; z-index:1; }
+
+  /* ── Header ── */
+  header {
+    padding: 3rem 2.5rem 1.5rem;
+    border-bottom: 2px solid var(--ink);
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
   }
-  @keyframes splashFull {
-    0%   { background:rgba(0,0,0,0);   opacity:0; }
-    15%  { background:rgba(0,0,0,0.88);opacity:1; }
-    70%  { background:rgba(0,0,0,0.88);opacity:1; }
-    100% { background:rgba(0,0,0,0);   opacity:0; }
+
+  .logo {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: clamp(2rem, 6vw, 3.8rem);
+    line-height: 1;
+    color: var(--ink);
+    letter-spacing: -2px;
   }
-  #splash-title {
-    font-size:42px;
-    font-weight:bold;
-    color:#FFD700;
-    letter-spacing:4px;
-    opacity:0;
-    transform:scale(0.5);
-    animation:titlePop 0.5s cubic-bezier(0.34,1.56,0.64,1) 0.35s forwards;
+
+  .logo span {
+    display: inline-block;
+    background: var(--accent1);
+    color: #fff;
+    padding: 0 10px 2px;
+    border-radius: 4px;
+    margin-right: 6px;
   }
-  @keyframes titlePop { to { opacity:1; transform:scale(1); } }
-  #splash-sub {
-    font-size:14px;
-    color:#aaa;
-    margin-top:12px;
-    opacity:0;
-    animation:subFade 0.4s ease 1s forwards;
+
+  .tagline {
+    font-size: 11px;
+    color: var(--ink2);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding-bottom: 6px;
   }
-  @keyframes subFade { to { opacity:1; } }
-  #ui { display:flex; gap:3rem; margin-top:1rem; color:#777; font-size:14px; }
-  #ui b { color:#FFD700; font-size:18px; }
-  #hint { margin-top:.5rem; color:#555; font-size:12px; letter-spacing:.05em; }
+
+  /* ── Ticker ── */
+  .ticker-wrap {
+    overflow: hidden;
+    border-bottom: 2px solid var(--ink);
+    background: var(--ink);
+    padding: 10px 0;
+    white-space: nowrap;
+  }
+  .ticker {
+    display: inline-block;
+    animation: ticker 18s linear infinite;
+    color: #fff;
+    font-size: 12px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+  .ticker span { margin: 0 3rem; }
+  .ticker .dot { color: var(--accent1); }
+  @keyframes ticker { from{transform:translateX(0)} to{transform:translateX(-50%)} }
+
+  /* ── Main grid ── */
+  main {
+    padding: 3rem 2.5rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.5rem;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  /* ── Game card ── */
+  .card {
+    background: var(--card);
+    border: 2px solid var(--ink);
+    border-radius: 4px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    position: relative;
+  }
+
+  .card:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 4px 4px 0 var(--ink);
+  }
+
+  .card-number {
+    position: absolute;
+    top: 14px; right: 16px;
+    font-family: 'Syne', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--ink2);
+    letter-spacing: 0.1em;
+    opacity: 0.5;
+  }
+
+  .card-visual {
+    height: 160px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 5rem;
+    border-bottom: 2px solid var(--border);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .card-visual canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  .card-visual .emoji-bg {
+    font-size: 4.5rem;
+    filter: drop-shadow(0 4px 12px rgba(0,0,0,0.08));
+    position: relative;
+    z-index: 1;
+    animation: float 3s ease-in-out infinite;
+  }
+
+  @keyframes float {
+    0%,100% { transform: translateY(0px); }
+    50% { transform: translateY(-8px); }
+  }
+
+  /* Each card gets its own accent strip */
+  .card:nth-child(1) .card-visual { background: #fff5f3; }
+  .card:nth-child(2) .card-visual { background: #f0f4ff; }
+  .card:nth-child(3) .card-visual { background: #f0fff8; }
+  .card:nth-child(4) .card-visual { background: #fffbf0; }
+  .card:nth-child(5) .card-visual { background: #fdf0ff; }
+
+  .card:nth-child(1) { --card-accent: var(--accent1); }
+  .card:nth-child(2) { --card-accent: var(--accent2); }
+  .card:nth-child(3) { --card-accent: var(--accent3); }
+  .card:nth-child(4) { --card-accent: #ff9900; }
+  .card:nth-child(5) { --card-accent: #aa00ff; }
+
+  .card-body {
+    padding: 1.2rem 1.4rem 1.4rem;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .card-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.35rem;
+    font-weight: 800;
+    color: var(--ink);
+    letter-spacing: -0.5px;
+    line-height: 1.1;
+  }
+
+  .card-badge {
+    display: inline-block;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    background: var(--card-accent);
+    color: #fff;
+    padding: 3px 8px;
+    border-radius: 2px;
+  }
+
+  .btn {
+    display: block;
+    width: 100%;
+    padding: 0.75rem;
+    background: var(--ink);
+    color: #fff;
+    border: 2px solid var(--ink);
+    border-radius: 3px;
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background 0.12s, color 0.12s, transform 0.1s;
+    margin-top: auto;
+  }
+
+  .btn:hover {
+    background: var(--card-accent);
+    border-color: var(--card-accent);
+    color: #fff;
+    transform: translateY(-1px);
+  }
+
+  /* ── Coming soon card ── */
+  .card.soon {
+    opacity: 0.55;
+    pointer-events: none;
+  }
+  .card.soon .btn {
+    background: var(--border);
+    border-color: var(--border);
+    color: var(--ink2);
+  }
+
+  /* ── Footer ── */
+  footer {
+    border-top: 2px solid var(--ink);
+    padding: 1.5rem 2.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  footer p {
+    font-size: 11px;
+    color: var(--ink2);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .footer-dots {
+    display: flex;
+    gap: 6px;
+  }
+
+  .footer-dots span {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--border);
+    border: 2px solid var(--ink);
+  }
+
+  .footer-dots span:nth-child(1) { background: var(--accent1); }
+  .footer-dots span:nth-child(2) { background: var(--accent2); }
+  .footer-dots span:nth-child(3) { background: var(--accent3); }
+
+  /* ── Animations on load ── */
+  .card {
+    opacity: 0;
+    transform: translateY(20px);
+    animation: cardIn 0.5s ease forwards;
+  }
+  .card:nth-child(1) { animation-delay: 0.1s; }
+  .card:nth-child(2) { animation-delay: 0.2s; }
+  .card:nth-child(3) { animation-delay: 0.3s; }
+  .card:nth-child(4) { animation-delay: 0.4s; }
+  .card:nth-child(5) { animation-delay: 0.5s; }
+
+  @keyframes cardIn {
+    to { opacity:1; transform:translateY(0); }
+  }
+
+  header {
+    opacity: 0;
+    animation: fadeDown 0.6s ease 0.05s forwards;
+  }
+  @keyframes fadeDown {
+    from { opacity:0; transform:translateY(-10px); }
+    to   { opacity:1; transform:translateY(0); }
+  }
 </style>
 </head>
 <body>
-<div id="wrap">
-  <canvas id="c" width="400" height="580"></canvas>
-  <div id="splash">
-    <div id="splash-title">FLAPPY PROSA</div>
-    <div id="splash-sub">Klick oder LEERTASTE zum Starten</div>
+<div class="page">
+
+  <header>
+    <div class="logo"><span>🕹</span> Prosa Game Night</div>
+    <div class="tagline">Wähle dein Spiel &nbsp;—&nbsp; möge das beste Team gewinnen</div>
+  </header>
+
+  <div class="ticker-wrap">
+    <div class="ticker">
+      <span>FLAPPY PROSA</span><span class="dot">✦</span>
+      <span>PROSA INVADERS</span><span class="dot">✦</span>
+      <span>PONG</span><span class="dot">✦</span>
+      <span>FLAPPY PROSA</span><span class="dot">✦</span>
+      <span>PROSA INVADERS</span><span class="dot">✦</span>
+      <span>PONG</span><span class="dot">✦</span>
+      <span>FLAPPY PROSA</span><span class="dot">✦</span>
+      <span>PROSA INVADERS</span><span class="dot">✦</span>
+      <span>PONG</span><span class="dot">✦</span>
+      <span>FLAPPY PROSA</span><span class="dot">✦</span>
+      <span>PROSA INVADERS</span><span class="dot">✦</span>
+      <span>PONG</span><span class="dot">✦</span>
+    </div>
   </div>
+
+  <main>
+
+    <!-- Flappy Prosa -->
+    <div class="card">
+      <div class="card-number">01 / 02</div>
+      <div class="card-visual">
+        <canvas id="icon1" width="400" height="320" style="position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated;"></canvas>
+      </div>
+      <div class="card-body">
+        <div>
+          <div class="card-title">Flappy Prosa</div>
+          <div style="margin-top:6px"><span class="card-badge">1 Spieler</span></div>
+        </div>
+        <a class="btn" href="index.html">▶ &nbsp;Spielen</a>
+      </div>
+    </div>
+
+    <!-- Prosa Invaders -->
+    <div class="card">
+      <div class="card-number">02 / 02</div>
+      <div class="card-visual">
+        <canvas id="icon2" width="400" height="320" style="position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated;"></canvas>
+      </div>
+      <div class="card-body">
+        <div>
+          <div class="card-title">Prosa Invaders</div>
+          <div style="margin-top:6px"><span class="card-badge">1 Spieler</span></div>
+        </div>
+        <a class="btn" href="prosa_invaders.html">▶ &nbsp;Spielen</a>
+      </div>
+    </div>
+
+    <!-- Coming soon placeholders -->
+    <div class="card soon">
+      <div class="card-number">03 / 03</div>
+      <div class="card-visual">
+        <canvas id="icon3" width="400" height="320" style="position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated;"></canvas>
+      </div>
+      <div class="card-body">
+        <div>
+          <div class="card-title">Pong</div>
+          <div style="margin-top:6px"><span class="card-badge" style="background:#ccc;color:#666">Demnächst</span></div>
+        </div>
+        <div class="btn">Bald verfügbar</div>
+      </div>
+    </div>
+
+  </main>
+
+  <footer>
+    <p>Prosa Game Night &nbsp;·&nbsp; Viel Spaß & gute Nerven 🎮</p>
+    <div class="footer-dots">
+      <span></span><span></span><span></span>
+    </div>
+  </footer>
+
 </div>
-<div id="ui">Punkte: <b id="sc">0</b> &nbsp;|&nbsp; Rekord: <b id="bs">0</b></div>
-<div id="hint">LEERTASTE oder KLICK zum Fliegen</div>
 
 <script>
-const canvas=document.getElementById('c');
-const ctx=canvas.getContext('2d');
-ctx.imageSmoothingEnabled=false;
-const scEl=document.getElementById('sc'),bsEl=document.getElementById('bs');
-const W=400,H=580,GRAV=0.30,FLAP=-6.0,PW=68,GAP=175,SPD=1.7,PINT=100;
-
-let best=0;
-try{best=parseInt(localStorage.getItem('flappyProsa')||'0');}catch(e){}
-bsEl.textContent=best;
-
-// ── Exact 23×27 pixel grid from reference image (pixel-perfect extraction) ──
 const N=null;
-const FACE_W=23,FACE_H=27;
-const FACE=[
+const F1_W=23,F1_H=27;
+const F1=[
   [N,N,N,N,N,N,N,'#201d32','#1f1b2c','#1e1b2e','#1f1c2d','#201c2d','#1e1b2c','#1f1c2d','#231e32',N,N,N,N,N,N,N,N],
   [N,N,N,N,N,'#232033','#1f1c2d','#c8846d','#f0ae94','#efae90','#efac8f','#eeab91','#efae90','#eead91','#eead8f','#1f1d32','#232035',N,N,N,N,N,N],
   [N,N,N,N,'#201d32','#cb856c','#eeaf90','#efad93','#edac8e','#f0ad90','#f0ad90','#f0af93','#edac8e','#eead8f','#efad93','#eec8b1','#ecaa88','#242134',N,N,N,N,N],
@@ -119,149 +419,157 @@ const FACE=[
   [N,N,N,N,N,N,N,N,N,N,'#201d30','#1e1b2c','#c1917b','#c28f7a','#77655b','#c58d76','#7d6b61','#76635c','#201d2e',N,N,N,N],
   [N,N,N,N,N,N,N,N,N,N,N,N,'#211e2f','#1c172b','#201d32','#201d30','#211e2f','#1e1a2b',N,N,N,N,N],
 ];
+const F2_W=48, F2_H=64, F2_RATIO=0.7535;
+const F2=[
+  [N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,'#3b2d28','#4c3e3a','#4a3b38','#493936','#483834','#4d3c39','#382e2a',N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N],
+  [N,N,N,N,N,N,N,N,N,N,N,N,N,'#36241f','#3a2920','#35241c','#2f1e18','#37221c','#563e33','#836f64','#897970','#89786e','#8a776c','#816b5e','#7a6253','#776052','#725c53','#4d3d37','#150e0b',N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N],
+  [N,N,N,N,N,N,N,N,N,N,N,'#3e2b23','#694f45','#816659','#806a60','#8b7466','#65473a','#62483f','#674f45','#583d30','#563a2d','#5d4032','#694d40','#745b4e','#7b6557','#7b6657','#7d6354','#80695a','#7d685f','#3e2d29',N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N],
+  [N,N,N,N,N,N,N,N,N,N,'#533b2f','#836756','#7d6558','#705646','#5d4236','#5b483c','#553a30','#50382d','#41271e','#2f1610','#331d16','#50382d','#5e463b','#6f584b','#644b3f','#614c42','#634c43','#634536','#785f51','#87756a','#67524b','#140c0a',N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N],
+  [N,N,N,N,N,N,N,N,N,'#402c23','#6c4e3c','#7a6355','#7c6960','#775f53','#796559','#4c392f','#503226','#7c5442','#865543','#7c4c3d','#805040','#6e4333','#43271d','#513e36','#716159','#7f7068','#73635a','#68554a','#685144','#664d40','#836b5b','#644e45','#150d0b',N,N,N,N,N,N,N,N,N,N,N,N,N,N,N],
+  [N,N,N,N,N,N,N,N,'#1c100d','#6e4f40','#7f685a','#735e54','#533b33','#4a3026','#483125','#845a49','#c98f78','#e5aa8d','#efb395','#efb395','#f2b498','#e6a98d','#b07862','#643a2d','#4a3127','#63534a','#7d6f67','#7d6e67','#7a6a63','#705c52','#5d4031','#7d6355','#695249','#160e0c',N,N,N,N,N,N,N,N,N,N,N,N,N,N],
+  [N,N,N,N,N,N,N,N,'#513c35','#7c655c','#654a3e','#462d23','#28110a','#392016','#8b5d4d','#e8aa8d','#f6bf9f','#f1bc9c','#f2be9e','#f3be9e','#f3bd9e','#f4be9f','#f3bb9c','#ebac8f','#b17861','#482a1e','#4f3e37','#83746b','#7a6864','#76655d','#6c5a51','#624638','#836c5d','#675046',N,N,N,N,N,N,N,N,N,N,N,N,N,N],
+  [N,N,N,N,N,N,N,'#3b261d','#755a4d','#65493c','#43281c','#3d221b','#382119','#7d5241','#e9aa8d','#f4bc9e','#f1bb9c','#f3bb9c','#f3bb9c','#f3bb9c','#f3bb9c','#f3bb9c','#f3bc9c','#f3bd9f','#f8be9e','#be866c','#4f2e24','#533f37','#7c6b61','#523e34','#7b6c64','#634c42','#634b3f','#7c6b5f','#654e46',N,N,N,N,N,N,N,N,N,N,N,N,N],
+  [N,N,N,N,N,N,'#211310','#664634','#674938','#4a3124','#422d23','#513930','#5b372b','#c88c72','#f2b799','#f3bb9e','#f3bc9c','#f3bc9d','#f3bc9d','#f3bc9d','#f3bc9d','#f3bc9d','#f3bc9d','#f2bb9c','#f1bb9d','#fac1a1','#be856d','#432116','#543f38','#624c44','#564238','#7a6a63','#51372b','#735f56','#827067','#453632',N,N,N,N,N,N,N,N,N,N,N,N],
+  [N,N,N,N,N,N,'#3b251d','#6e5040','#675145','#655145','#5b473d','#341d14','#976450','#f0b598','#f2bc9d','#f3bc9b','#f3bc9d','#f3bc9d','#f3bc9d','#f3bc9d','#f3bc9d','#f3bc9d','#f3bc9d','#f3bc9d','#f2bb9d','#f1bb9c','#f6bd9c','#bd866b','#553226','#68534c','#463027','#7a6b64','#604a41','#563d32','#705d53','#6b564b','#261916',N,N,N,N,N,N,N,N,N,N,N],
+  [N,N,N,N,N,'#1d110e','#6f5549','#6d5a50','#6d5951','#634c41','#341d16','#47281d','#cd9075','#f3ba9b','#f2bb9c','#f3bc9c','#f3bc9d','#f3bc9d','#f3bc9d','#f3bc9d','#f3bc9d','#f3bc9d','#f3bc9d','#f3bc9d','#f3bc9d','#f2bb9c','#f1bb9c','#fac0a1','#a66f58','#49342c','#5c4841','#65524b','#6e5c54','#341c13','#6c574e','#715c51','#523c35',N,N,N,N,N,N,N,N,N,N,N],
+  [N,N,N,N,N,'#50362d','#836a5d','#705e52','#5a453a','#2f1a13','#351c15','#8c624f','#e6a98b','#f1ba9b','#f3bc9d','#f3bc9d','#f3bc9d','#f3bc9d','#f3bc9d','#f3bc9d','#f3bc9d','#f3bc9d','#f3bc9d','#f3bc9d','#f3bc9d','#f3bc9d','#f2bb9c','#f4bd9e','#ebb193','#784e3e','#5b4741','#503e35','#69564d','#381e16','#5a4237','#78685f','#644f45','#1c120f',N,N,N,N,N,N,N,N,N,N],
+  [N,N,N,N,'#271915','#775f54','#60493e','#674b3b','#3e231a','#382018','#493025','#ad7863','#f4b79a','#f3bc9e','#f2bb9c','#f1ba9c','#f2bb9c','#f1ba9c','#f2bb9c','#f3bc9d','#f3bc9d','#f3bc9d','#f3bc9d','#f3bc9d','#f3bc9d','#f3bc9d','#f3bc9d','#f1ba9b','#f9c2a3','#d59c80','#4d2e24','#3c2b23','#6a554c','#3f251b','#3f261d','#705e55','#705b50','#43312a',N,N,N,N,N,N,N,N,N,N],
+  [N,N,N,N,'#564034','#63483b','#5d4133','#462d21','#482c22','#4e3226','#4e2e23','#c88b6f','#f0b596','#f1bb9b','#f8c0a1','#fcc4a4','#fbc3a3','#fbc4a4','#f6bfa0','#f2bb9c','#f3bc9c','#f3bc9d','#f3bc9d','#f3bc9d','#f2bb9c','#f2bc9c','#f2bc9c','#f3bc9c','#f1bb9c','#f5bc9d','#895a46','#36211b','#66524b','#3b2218','#42281e','#684f43','#746055','#5b3f32',N,N,N,N,N,N,N,N,N,N],
+  [N,N,N,'#19100d','#593d30','#5b3e2f','#53382b','#4a322a','#62483a','#311913','#815140','#e8a88a','#f4bc9e','#f9c2a2','#daa489','#c7947b','#cb967e','#ca957b','#e2ad8f','#f9c1a2','#f1ba9c','#f3bc9d','#f2bc9d','#f3bc9e','#f8c1a1','#f8c0a1','#f7bfa1','#f6bfa0','#f4bd9f','#ffc7a6','#cf957c','#3e231d','#5d4a43','#40261b','#41261b','#55382c','#725f54','#5d4136',N,N,N,N,N,N,N,N,N,N],
+  [N,N,N,'#170d0a','#593d2f','#593c2d','#563b2f','#715a4e','#482d23','#250e0a','#8e5a49','#e4a385','#eab296','#b47d69','#986450','#8f5b48','#95604c','#804f3e','#7f4d3e','#dba489','#f6bfa0','#f1ba9b','#f2bc9e','#f5bd9e','#c48d76','#915d4d','#976753','#986754','#ab7660','#d79e86','#e5a88b','#613c2e','#4d362c','#55382c','#371f18','#3e241a','#745a4c','#775a4c','#291b14',N,N,N,N,N,N,N,N,N],
+  [N,N,N,N,'#4c3026','#5b4035','#766359','#4d342a','#391f17','#27100c','#8c5a48','#e19d80','#be8366','#c7966e','#e8ba8c','#ebbc8d','#efbe8c','#e0b384','#a67859','#ac745d','#f3ba9b','#f1ba9b','#f6be9f','#cf9178','#8d5a44','#a47d5d','#c89f76','#cc9f74','#d4a87c','#b28763','#dea484','#734938','#331c14','#624435','#442b21','#382018','#674939','#765442','#382720',N,N,N,N,N,N,N,N,N],
+  [N,N,N,'#150c0b','#4e3225','#725d51','#665348','#391e15','#341c16','#240f0b','#8a5747','#de9b7c','#e4b087','#e2ad82','#e5a582','#f1b293','#e1a485','#e3a585','#e7b186','#dcaa81','#f2b99a','#f8bfa2','#f6bda2','#cc9274','#d4a278','#e0a780','#eeac8c','#eaa988','#edac8b','#e0a57f','#eab88b','#9c6b52','#2f1510','#664839','#55382b','#25100a','#4e342b','#765743','#5b3e2f',N,N,N,N,N,N,N,N,N],
+  [N,N,N,'#1a100d','#684837','#7b6658','#513b2f','#3e231a','#2f1712','#2e150c','#956348','#eebb8a','#e2aa79','#df9c84','#9f725e','#5f3c31','#735044','#7a5748','#b1715f','#e0ae84','#e6b580','#e4b783','#e1ae7b','#e5b788','#b97f65','#805143','#643e31','#835f52','#7d5e4f','#d18f77','#e5a67d','#d5a879','#5d3d2c','#4f3426','#57392b','#27120c','#382018','#6d4e3c','#694b3c',N,N,N,N,N,N,N,N,N],
+  [N,N,N,'#1e110e','#694e3e','#7e6557','#52382c','#422920','#2b1411','#33190f','#8d6136','#d7ad6e','#e8ab7b','#8b5646','#7b5c4d','#51554f','#363d3c','#908074','#a16452','#ce9b73','#b68657','#e4aa8b','#c59160','#d2a26c','#a36753','#a28373','#3d4442','#4b4e4c','#69625c','#714537','#d39572','#deb274','#916b40','#412518','#67493a','#331b13','#432a20','#5e3f31','#7d5f51','#392d29',N,N,N,N,N,N,N,N],
+  [N,N,N,N,'#493125','#714e3e','#41261e','#381e18','#2a150f','#30170f','#995f4c','#e3a579','#e3aa7c','#c38c76','#f8bb9c','#d0a893','#a08776','#dcad95','#f5b69b','#e0a978','#c28a66','#ffcbb4','#d7a07d','#d29961','#f4ba9c','#f5bb9c','#bd9b86','#a38877','#e6b69b','#d19781','#d29a75','#d19662','#714133','#2c120e','#5c3c30','#3f241b','#3e271d','#593e2d','#7b5846','#6e5247','#140c09',N,N,N,N,N,N,N],
+  [N,N,'#181010',N,'#472e25','#714f3e','#4b3024','#361e16','#2a130f','#3c1c15','#ab6f5a','#dca17d','#d39e6b','#ffc8aa','#eeb495','#eeae91','#efae8d','#eaae90','#f3ba9d','#dba36a','#dd9f7a','#f0b79c','#eeb696','#d69c64','#f0b792','#e8ac91','#eba889','#f4b393','#ecaf92','#fbc1a5','#e4ae7d','#d2986a','#955f50','#28100b','#442a1f','#52352b','#28110b','#52362a','#704f3c','#72513f','#38231a',N,N,N,N,N,N,N],
+  [N,N,'#14100f',N,'#5a3b2d','#6c4c3b','#62473a','#321c15','#2a150f','#3b1c16','#a46852','#eeb295','#c7925f','#e4ac7b','#eeb297','#f0b89e','#f0b79f','#f7bda0','#dea676','#cd9563','#edb196','#ecb395','#f4b89f','#d1996f','#ce9763','#f6bf9f','#f0b89e','#f0b89e','#f2b79e','#efb58e','#c08c55','#e1a585','#8f5a49','#2a120d','#351f16','#573a2d','#331b14','#4b2f26','#674836','#5f4130','#4b3024','#211612',N,N,N,N,N,N],
+  [N,N,'#1c1210','#2c1812','#785643','#5c4032','#654c40','#361c16','#2a150f','#361811','#a66954','#ecae92','#e2a885','#c99259','#dba46c','#e1a770','#e5ab72','#dda974','#c38a5b','#e2a682','#efb59a','#f3bca0','#f5bba2','#eaab8d','#c28559','#d3a06b','#e6ae75','#e2aa6f','#e0a875','#c79158','#d9a179','#f3b89e','#8d5846','#2f1510','#2c140f','#5a3b2e','#3c221a','#4a2e24','#664736','#6a4a3a','#472c1f','#452d24','#16110f',N,N,N,N,N],
+  [N,N,N,'#4c2d22','#866856','#533b33','#5e443a','#361d17','#2a140f','#553026','#a46852','#f0b293','#f3ba9d','#e7ae92','#d39c70','#c18b56','#c8925d','#c78e66','#de9e85','#f8bb9e','#f8c0a5','#f9cdba','#f7bfa4','#f5b799','#db9c84','#be815e','#cc9361','#c58e5a','#cb9363','#eab292','#ecb195','#e9ab8c','#985e4a','#58332a','#260f0b','#4b2e23','#3b211a','#4a2e23','#654738','#523729','#583a2d','#271a15','#30201c',N,N,N,N,N],
+  [N,N,'#2a1713','#59392a','#70503f','#563e33','#765a4e','#301710','#3f2219','#905948','#a1654f','#e5a585','#f1b99a','#eeb496','#ebb194','#f3b89e','#edb296','#c6846a','#b5755d','#b47c64','#cd8f75','#f8bca1','#e6a88e','#af745e','#bc806b','#c58368','#e6a88e','#f3b99f','#eeb699','#edb197','#f5bd9f','#e4a687','#955c47','#633a2d','#24100b','#3e241c','#331b13','#4d3227','#604435','#4a2e21','#644335',N,'#33231d',N,N,N,N,N],
+  [N,'#140d0b','#472920','#755543','#755b4e','#5d4438','#6e5042','#341d14','#4f2c22','#b3735b','#8e5542','#cd8c70','#e2a282','#edb495','#f2ba9b','#e2a68a','#ca856a','#e1a184','#dba084','#995c48','#935745','#a2654f','#985c47','#985c46','#cb8f74','#f4ba9c','#ce8d71','#d89c7e','#f5be9f','#ecb294','#edae8f','#be8068','#985e49','#744838','#230e0a','#3e241c','#381f16','#53382b','#53372b','#331a12','#614130','#2f221c','#35231b','#180c0a',N,N,N,N],
+  [N,'#33201b','#2b1d17','#755341','#66493a','#624738','#614334','#472e23','#43221b','#b3755c','#8f5744','#c9886d','#da997a','#d9997d','#d7967a','#c9866a','#e2a384','#eeb699','#f5bd9e','#e4a98b','#bb7e65','#9e624c','#af735a','#da9e7e','#f5bd9e','#f1bb9c','#f2b89a','#d39275','#ce8f72','#de9f80','#de9d7c','#b5765e','#935a48','#623b2f','#28120c','#44281e','#3e251c','#614538','#402518','#27110b','#5b3d2d','#3d2b20','#1c100f',N,N,N,N,N],
+  ['#1c100e','#271915','#180e0b','#77594a','#664c3b','#4f3125','#5b3d2f','#5b3d2e','#260f0a','#6f4435','#784737','#cc8b70','#d49376','#d29277','#c8886c','#d8987a','#e6ac8f','#fac3a5','#fac1a3','#f2b69a','#e9a88e','#edaf91','#eaa88e','#edb196','#f4bb9d','#f8bfa0','#eab194','#ebb091','#cc9075','#d49579','#d19071','#ba7c63','#653b2e','#361c14','#3d241b','#391f17','#382019','#765b4e','#533628','#28120d','#503326','#5c4336',N,N,N,N,N,N],
+  ['#23140f','#251813','#150d0a','#775c50','#694e40','#4a2d22','#57382b','#654634','#29140e','#29130e','#341712','#b97e67','#d49275','#d4967a','#ecb194','#eab294','#ad755f','#ad6f5e','#b37263','#aa6658','#a76156','#b57464','#aa6559','#a66154','#b06c5c','#b07362','#a76f5a','#e2aa8d','#eab192','#dda487','#d18f72','#8d5847','#28110c','#311912','#482c22','#311711','#41271f','#765b4e','#55392c','#26100b','#4d3025','#6d4f42',N,N,N,N,N,N],
+  ['#22130e','#251712','#170f0c','#785846','#664838','#513529','#41271c','#644433','#301912','#301913','#26100b','#815241','#db977a','#cd8e71','#f2b89a','#f1b799','#f0b99b','#ca9279','#b57664','#b87669','#bb7c72','#b6756b','#b97a72','#ba7a70','#b47666','#cf967f','#f5bda0','#efb496','#f5bd9f','#d09175','#db9679','#643c2f','#26100c','#311710','#5d4237','#3e251d','#482c21','#72594c','#65493b','#331911','#3f251d','#604235',N,N,N,N,N,N],
+  ['#140e0b','#1f1610','#140c0a','#6d4c3b','#674835','#624233','#2e1711','#604233','#42281e','#2b130e','#2a1510','#47251b','#c9896d','#dd9b7d','#e5a98b','#efb698','#eaae91','#fac2a4','#fac1a3','#f1b397','#edac95','#efaf96','#edad94','#eeb095','#f9c0a1','#fac1a3','#ecb395','#ebb294','#edb092','#e09f7f','#b77b62','#341a11','#361f18','#311710','#664b3f','#4e372e','#41261b','#664d41','#826a5c','#5a3d2f','#381e16','#301d18',N,N,N,N,N,N],
+  [N,'#1c1412',N,'#493125','#5e3f30','#6e4d3c','#3e261d','#553629','#563629','#2a130d','#301812','#28120c','#96614d','#e5a184','#d8987a','#ecae90','#efb698','#eeb698','#f0b99c','#f0b89a','#e8ad8f','#e8ab8e','#e8ab8e','#efb497','#f1ba9c','#efb89b','#edb497','#eeb598','#dc9e80','#d89476','#6e4134','#24100a','#442920','#331a13','#614638','#685347','#40281e','#674a3c','#6c574c','#7d685b','#5b3b2b','#241510',N,N,N,N,N,N],
+  [N,N,N,'#452e23','#5d4030','#674836','#4e3125','#3e231a','#573829','#2e150f','#301811','#29140e','#4e2a20','#c78970','#df9c7e','#d79579','#edb295','#f2bb9e','#f1ba9c','#edb397','#eeb496','#f0b79a','#f0b698','#ecb395','#f1b99c','#f1b99b','#f5bc9f','#dd9f81','#e29f80','#ad715b','#34160f','#2e1811','#5d3e30','#533528','#5f4132','#6a5146','#5f463d','#5d3f34','#5e4336','#644e43','#867062','#50392f',N,N,N,N,N,N],
+  [N,N,N,'#2a150e','#5b3e30','#644535','#533529','#341b13','#573a2d','#371e17','#2c1510','#2f1811','#24100a','#4e2f24','#ce9074','#e2a082','#dc9d7f','#f0b69a','#f0ba9c','#f1ba9c','#f1ba9c','#f1ba9b','#f1ba9b','#f1ba9c','#f1ba9d','#f1bb9e','#e3a687','#e3a080','#b67b63','#3f2017','#2a130f','#301812','#5c3e31','#5c3d2f','#694737','#4c3026','#6d574c','#543a2d','#5d4033','#53382b','#685245','#7f695b','#261611',N,N,N,N,N],
+  [N,N,N,'#2f1b15','#4f3127','#634436','#5b3d2e','#3d2319','#4a2e24','#391f18','#2c1510','#2e1711','#321a13',N,'#472c25','#b87b63','#df9a7a','#e5a889','#f0b99a','#f0ba9d','#f0ba9b','#f0ba9b','#efb99b','#f0ba9c','#f0b899','#e8ad8e','#de9b7e','#b1745e','#281713','#140a08','#321711','#361c15','#503427','#5c3e30','#775541','#361d13','#51362b','#715a4c','#5c4033','#604236','#4f3227','#6b5043','#63483b',N,N,N,N,N],
+  [N,N,N,'#472d23','#44281f','#5e4032','#5e4030','#4f3327','#492d23','#392018','#2c150f','#2e1711','#311913',N,N,'#1d100c','#784f40','#b97e64','#e29f82','#f2b395','#f2b191','#f1b293','#f2b393','#efb192','#e2a182','#c4846a','#815343','#24130e',N,'#1e100d','#2e140d','#42291f','#4d3024','#45291e','#694a38','#3b2119','#3c2118','#5d4135','#765f55','#674d42','#583a2d','#4d3124','#664738','#241a14',N,N,N,N],
+  [N,N,'#271814','#492b22','#482d21','#694a39','#5f3f31','#5a3c2d','#482c22','#391f17','#2c150f','#2e1711','#301812',N,N,N,N,'#1d0e0a','#654033','#7e5243','#865847','#855746','#885948','#7c5040','#6b4235','#331d16',N,N,N,'#1a0d0a','#2c110c','#4e3226','#5a3c2e','#270e09','#624435','#4f3125','#3d221b','#3b2118','#5d453a','#79655b','#604336','#56392a','#634434','#50342a',N,N,N,N],
+  [N,N,'#3c221a','#41281f','#5d4032','#654536','#5f3f31','#5c3d2f','#462a20','#3a2118','#2c140e','#30160f','#2b1411',N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,'#281613','#31160f','#52372a','#4a2e23','#230d09','#4a2c22','#503226','#3c211a','#3c221a','#4a2d22','#715b51','#684f44','#6c4a39','#6d4d3c','#59372b','#3b261e','#1a110e',N,N],
+  [N,'#201310','#321c17','#533a2e','#644637','#5d3e30','#6c4c3a','#462920','#442a20','#341c15','#2c140e','#301710','#22120d',N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,'#371d17','#3a2016','#503426','#381f17','#301913','#311710','#5f4133','#3e241c','#3d251c','#3e2218','#65483b','#664b3f','#724e3c','#71513e','#483025','#21120e','#3c2620','#231713',N],
+  [N,'#170c0c','#36251e','#634435','#5b3d2e','#5e3e31','#5f402f','#3b2019','#472c22','#2b140e','#2e1611','#32170f','#25120e',N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,'#3c251b','#3b2118','#54382b','#3a2117','#3a2019','#351b14','#765441','#3a2117','#3c241a','#40251b','#573a2d','#714f3c','#815b46','#2e2019','#231510','#190f0c',N,'#35201a',N],
+  ['#231514',N,'#3c2921','#624434','#4c2f23','#5a3c2f','#3f261b','#382018','#3c211a','#2c130f','#2e1511','#31170f','#1f110e',N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,'#40261c','#371d15','#3b211a','#351c15','#3a2017','#44291f','#604230','#2a130c','#371c14','#462b1f','#523528','#795640','#412a1e',N,'#291913','#38221b',N,'#352119',N],
+  ['#1f1110',N,'#422a22','#654536','#381d15','#55382c','#492e22','#482c21','#2e150f','#2e1510','#2f1710','#2f1712',N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,'#1b110e','#4d2f23','#351c15','#3a2018','#462c22','#3b2118','#56392d','#52372c','#250f0c','#331b13','#3b2218','#573a2d','#6a4a38',N,'#1b100f','#331c16','#331f19','#281d19','#2f1f17',N],
+  [N,'#201410','#583a2d','#614132','#371e16','#55382b','#634234','#341912','#2e150e','#2f1712','#24130f',N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,'#291712','#492d22','#321a13','#40271d','#4f352c','#381e17','#593b2e','#452b22','#28120b','#40261c','#462a21','#472a21','#5f3f30','#291613','#1b0f0d','#2e1812','#39241c','#1e1513',N,N],
+  ['#150b0c','#4a332a','#5c3f32','#5e3f2f','#58392b','#513327','#54362a','#43271e','#25130f',N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,'#462920','#321812','#301913','#452a20','#4f352c','#391f19','#4d2f23','#51362c','#331a12','#4b2f25','#4f3326','#593a2e','#684738','#3b2018','#22120e',N,'#41261d','#160e0b',N,N],
+  ['#1a110f','#5f4134','#44281e','#4d3023','#6e4c3a','#361f16','#23120e','#422d26',N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,'#3e241e','#4e3226','#2c140e','#311811','#54382b','#543a2e','#381f17','#503328','#523a2d','#3d241b','#392018','#5a3b2d','#53362a','#53372a','#5d4031','#2c160f',N,'#42271f','#180f0d',N,N],
+  [N,'#41281d','#27120e',N,'#473126','#2f1e18',N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,'#261410','#4a2d22','#3e241a','#2c150e','#301811','#664637','#593f32','#2d160f','#563828','#5d4031','#523a2f','#28130a','#583b2d','#5e3f2f','#2a140b','#634334','#3c2920',N,'#38231c',N,N,N],
+  [N,N,N,N,'#201612','#311f1a',N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,'#170d0d','#2b1a16','#472d22','#341b15','#2d130e','#2b120e','#5d3e31','#5d4133','#2e170f','#3a2017','#694b3a','#5b3f31','#3e241b','#45281d','#694939','#432a1f','#492b1f','#4f3529','#3f271e','#1e1310',N,N,N],
+  [N,N,N,N,N,'#462c24',N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,'#171010','#261915','#43281d','#2e1710','#321913','#2e160e','#54372a','#6d4e3d','#402920','#27110b','#44291f','#664636','#593c2d','#4d3327','#5e4133','#5d4135','#4e362b','#4c3126','#462d24',N,N,N,N],
+  [N,N,N,N,N,'#180f0d','#1e1310',N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,'#160f0d','#3a2118','#3d241b','#2b160e','#361d16','#40251b','#361e14','#664838','#4a3127','#3b2119','#3f261d','#5c4031','#664839','#694d3d','#715344','#4d352a','#513b30','#4f352a','#2b1811',N,N,N,N],
+  [N,N,N,N,N,N,'#1d120f','#160f0f',N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,'#231814','#37211a','#4f3126','#2b140d','#341d14','#4d3228','#351d16','#6e4d3d','#5b3f32','#41271c','#331d15','#4f3629','#604234','#795948','#6c5040','#553d31','#513b2e','#50362b','#331f18',N,N,N,N],
+  [N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,'#171311','#16100e','#2e201c','#23140f','#523429','#29120b','#462c22','#573a2e','#2b120d','#5a3b2d','#63473a','#4b3427','#351c13','#4c2f24','#523629','#715443','#694c3b','#715244','#51392e','#4b3128','#2d1a14',N,N,N,N],
+  [N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,'#181211','#191412','#23130e','#53362c','#2d160f','#513429','#664639','#260f09','#4f3228','#624437','#5e4336','#452a22','#452921','#624536','#775b48','#6a4d3d','#583b2e','#4c3228','#462921','#36221b',N,N,N,N],
+  [N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,'#16100f',N,'#341d15','#4c3025','#381f18','#4d3127','#66473a','#2a120c','#4e3227','#5c4033','#694f40','#412821','#492e25','#795b49','#7b5d4b','#553c2f','#3e281d','#40271b','#654638','#1d1310','#20100e','#1a0f0c',N,N],
+  [N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,'#392017','#492d24','#4a2f26','#503429','#634537','#3a2119','#452b20','#3e251e','#54392d','#492d22','#614635','#836552','#5b3e31','#472d22','#331a15','#583b2d','#4b372a',N,N,N,N,N],
+  [N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,'#4b3127','#482d23','#583d2e','#6b4b3a','#644636','#593b2f','#472f24','#2f1911','#503527','#7f604a','#7f604a','#54392d','#472d22','#3d2219','#5d4031','#7c5d49','#2b1911',N,N,N,N,N],
+  [N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,'#422e27','#4b2f24','#5c4030','#72513f','#593d2e','#4d3228','#55382b','#644735','#5b4132','#604334','#3c2018','#3d231a','#4f382b','#604333','#8c6d56','#5b3e2f','#2f1b15',N,N,N,N,N],
+  [N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,'#291c18','#41251c','#53382b','#624434','#492c21','#573c31','#513528','#4b2d22','#462b20','#27100a','#341a14','#523629','#3f241a','#7f604c','#482c20','#3b1f17','#38251e',N,N,N,N,N],
+  [N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,'#15110f','#3f241b','#4b2d21','#4d3227','#462a1f','#2d150d','#3e251c','#57392d','#3a1e16','#311912','#664a3a','#311a10','#644635','#6e4e3d','#230c09','#42241b','#36231c',N,N,N,N,N],
+  [N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,'#3e2b23','#4c2f24','#331c12','#2d150e','#371c14','#593b2f','#371e16','#28100a','#4d3125','#5d4030','#331911','#503527','#5d402f','#321912','#41261b','#36241c',N,N,N,N,N],
+  [N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,'#443129','#3c221a','#341c14','#301610','#513428','#391f16','#250e0a','#3f271d','#5f3e30','#3b2219','#3d221a','#2a110b','#593d2e','#3d2419','#523526','#2d1b13',N,N,N,N,N],
+  [N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,'#1f1411','#361d18','#391f17','#503429','#351a12','#51352a','#331911','#3c2018','#5f4132','#492f24','#371b14','#4b3025','#29110c','#462a21','#52382a','#432920','#140b09',N,N,N,N,N],
+  [N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,'#1f100b','#160c0c','#26130e','#614435','#3e241b','#371d15','#3f231b','#371c13','#593a2e','#3f241b','#2a100c','#492e23','#472c22','#341912','#2c1914','#1b1110',N,N,N,N,N,N],
+  [N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,'#20100c',N,N,'#5f4234','#543b2d','#301610','#321812','#260e08','#56382b','#42261c',N,'#1b0e0a','#492c21','#44291f','#291a15','#1c1413',N,N,N,N,N,N],
+];
 
-// Pre-render to offscreen canvas (1px per art pixel)
-const fOff=document.createElement('canvas');
-fOff.width=FACE_W; fOff.height=FACE_H;
-const fCtx=fOff.getContext('2d');
-fCtx.imageSmoothingEnabled=false;
-for(let r=0;r<FACE_H;r++)
-  for(let c=0;c<FACE_W;c++){
-    const col=FACE[r]&&FACE[r][c];
-    if(!col) continue;
-    fCtx.fillStyle=col;
-    fCtx.fillRect(c,r,1,1);
-  }
-
-// Draw face at correct aspect ratio (23:27 ≈ 0.85, close to original 0.82)
-function drawFace(cx,cy,size,angle){
-  const dh=size;
-  const dw=size*(FACE_W/FACE_H);
-  ctx.save();
-  ctx.translate(cx,cy);
-  ctx.rotate(angle*Math.PI/180);
-  ctx.imageSmoothingEnabled=false;
-  ctx.drawImage(fOff,-dw/2,-dh/2,dw,dh);
-  ctx.restore();
-}
-
-// ── Game state ────────────────────────────────────────────────────
-let bird,pipes,frame,score,state;
-let clouds=[{x:60,y:55,r:24},{x:220,y:80,r:19},{x:340,y:42,r:30}];
-
-function reset(){
-  bird={x:90,y:H/2-40,vy:0,angle:0};
-  pipes=[];frame=0;score=0;
-  scEl.textContent='0';state='waiting';
-}
-
-function flap(){
-  if(state==='waiting') state='playing';
-  if(state==='playing') bird.vy=FLAP;
-  if(state==='dead') reset();
-}
-canvas.addEventListener('click',flap);
-document.addEventListener('keydown',e=>{if(e.code==='Space'){e.preventDefault();flap();}});
-
-function drawSky(){
-  const g=ctx.createLinearGradient(0,0,0,H-65);
-  g.addColorStop(0,'#b8cad8');g.addColorStop(1,'#d8d8d8');
-  ctx.fillStyle=g;ctx.fillRect(0,0,W,H-65);
-}
-function drawClouds(){
-  ctx.fillStyle='rgba(255,255,255,0.72)';
-  clouds.forEach(c=>{
-    ctx.beginPath();
-    ctx.arc(c.x,c.y,c.r,0,Math.PI*2);
-    ctx.arc(c.x+c.r*.8,c.y-c.r*.3,c.r*.7,0,Math.PI*2);
-    ctx.arc(c.x+c.r*1.6,c.y,c.r*.55,0,Math.PI*2);
-    ctx.fill();
-  });
-}
-function drawConcrete(x,y,w,h){
-  if(h<=0)return;
-  const g=ctx.createLinearGradient(x,0,x+w,0);
-  g.addColorStop(0,'#787878');g.addColorStop(.2,'#9c9c9c');
-  g.addColorStop(.5,'#ababab');g.addColorStop(.8,'#979797');g.addColorStop(1,'#757575');
-  ctx.fillStyle=g;ctx.fillRect(x,y,w,h);
-  ctx.strokeStyle='rgba(0,0,0,0.04)';ctx.lineWidth=1;
-  for(let ly=y+18;ly<y+h;ly+=18){ctx.beginPath();ctx.moveTo(x,ly);ctx.lineTo(x+w,ly);ctx.stroke();}
-  ctx.fillStyle='rgba(255,255,255,0.10)';ctx.fillRect(x,y,3,h);
-  ctx.fillStyle='rgba(0,0,0,0.14)';ctx.fillRect(x+w-3,y,3,h);
-}
-function drawPipe(p){
-  const x=p.x,topH=p.topH,botY=p.topH+GAP,capH=20,ex=8;
-  drawConcrete(x,0,PW,topH-capH);
-  const cg=ctx.createLinearGradient(x-ex,0,x+PW+ex,0);
-  cg.addColorStop(0,'#585858');cg.addColorStop(.5,'#828282');cg.addColorStop(1,'#585858');
-  ctx.fillStyle=cg;ctx.fillRect(x-ex,topH-capH,PW+ex*2,capH);
-  ctx.fillStyle='rgba(255,255,255,0.09)';ctx.fillRect(x-ex,topH-capH,PW+ex*2,4);
-  ctx.fillStyle='rgba(0,0,0,0.28)';ctx.fillRect(x-ex,topH-3,PW+ex*2,3);
-  ctx.fillStyle=cg;ctx.fillRect(x-ex,botY,PW+ex*2,capH);
-  ctx.fillStyle='rgba(255,255,255,0.09)';ctx.fillRect(x-ex,botY,PW+ex*2,4);
-  ctx.fillStyle='rgba(0,0,0,0.22)';ctx.fillRect(x-ex,botY+capH-3,PW+ex*2,3);
-  drawConcrete(x,botY+capH,PW,H-65-botY-capH);
-}
-function drawGround(){
-  const g=ctx.createLinearGradient(0,H-65,0,H);
-  g.addColorStop(0,'#606060');g.addColorStop(.08,'#888');g.addColorStop(1,'#6a6a6a');
-  ctx.fillStyle=g;ctx.fillRect(0,H-65,W,65);
-  ctx.fillStyle='rgba(255,255,255,0.07)';ctx.fillRect(0,H-65,W,3);
-  ctx.fillStyle='rgba(0,0,0,0.35)';ctx.fillRect(0,H-65,W,2);
-}
-function drawScore(){
-  ctx.textAlign='center';ctx.font='bold 30px monospace';
-  ctx.shadowColor='rgba(0,0,0,0.6)';ctx.shadowBlur=6;
-  ctx.fillStyle='#fff';ctx.fillText(score,W/2,52);ctx.shadowBlur=0;
-}
-function drawOverlay(title,sub){
-  ctx.fillStyle='rgba(0,0,0,0.52)';ctx.fillRect(0,0,W,H);
-  ctx.textAlign='center';
-  ctx.font='bold 32px monospace';ctx.fillStyle='#FFD700';ctx.fillText(title,W/2,H/2-28);
-  ctx.font='15px monospace';ctx.fillStyle='#fff';ctx.fillText(sub,W/2,H/2+10);
-  if(state==='dead'){ctx.font='13px monospace';ctx.fillStyle='#FFD700';ctx.fillText('Rekord: '+best,W/2,H/2+38);}
-}
-function checkHit(){
-  const bx=bird.x,by=bird.y,bw=16,bh=18;
-  if(by+bh>H-65||by-bh<0)return true;
-  for(let p of pipes)
-    if(bx+bw>p.x+6&&bx-bw<p.x+PW-6&&(by-bh<p.topH||by+bh>p.topH+GAP))return true;
-  return false;
-}
-
-function loop(){
-  drawSky();
-  clouds.forEach(c=>{if(state==='playing')c.x-=.35;if(c.x+90<0)c.x=W+50;});
-  drawClouds();
-  if(state==='playing'){
-    frame++;
-    bird.vy+=GRAV;bird.y+=bird.vy;
-    bird.angle=Math.min(Math.max(bird.vy*3.5,-28),85);
-    if(frame%PINT===0){
-      const minH=70,maxH=H-65-GAP-70;
-      pipes.push({x:W+10,topH:Math.floor(Math.random()*(maxH-minH))+minH,scored:false});
+// ── Helper: render pixel grid to canvas ──────────────────────────
+function renderPixels(canvas, grid, gw, gh, scale=0.55) {
+  const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  // Use pixel size so each art-pixel maps to equal screen pixels
+  // This preserves the exact grid ratio (gw:gh) automatically
+  const maxW = canvas.width * scale;
+  const maxH = canvas.height * scale;
+  const size = Math.min(maxW / gw, maxH / gh);
+  // Draw at gw*size wide, gh*size tall → ratio = gw/gh exactly
+  const dw = gw * size;
+  const dh = gh * size;
+  const ox = (canvas.width - dw) / 2;
+  const oy = (canvas.height - dh) / 2;
+  for (let r = 0; r < gh; r++) {
+    for (let c = 0; c < gw; c++) {
+      const col = grid[r] && grid[r][c];
+      if (!col) continue;
+      ctx.fillStyle = col;
+      ctx.fillRect(
+        Math.round(ox + c * size),
+        Math.round(oy + r * size),
+        Math.ceil(size) + 1,
+        Math.ceil(size) + 1
+      );
     }
-    pipes.forEach(p=>p.x-=SPD);
-    pipes=pipes.filter(p=>p.x+PW>-20);
-    pipes.forEach(p=>{
-      if(!p.scored&&p.x+PW<bird.x){
-        p.scored=true;score++;scEl.textContent=score;
-        if(score>best){best=score;bsEl.textContent=best;try{localStorage.setItem('flappyProsa',best);}catch(e){}}
-      }
-    });
-    if(checkHit())state='dead';
   }
-  pipes.forEach(drawPipe);
-  drawGround();
-  if(state!=='playing')bird.angle=0;
-  drawFace(bird.x,bird.y,46,bird.angle);
-  drawScore();
-  if(state==='waiting')drawOverlay('FLAPPY PROSA','Klick oder LEERTASTE');
-  else if(state==='dead')drawOverlay('GAME OVER','Klick zum Neustart');
-  requestAnimationFrame(loop);
 }
-reset();loop();
-setTimeout(()=>{document.getElementById('splash').style.display='none';},2600);
+
+// ── Draw face icons on card canvases ─────────────────────────────
+window.addEventListener('load', () => {
+  // Card 1: Flappy Prosa – face1 (bald guy)
+  const c1 = document.getElementById('icon1');
+  renderPixels(c1, F1, F1_W, F1_H);
+
+  // Card 2: Prosa Invaders – face2 (brown hair)
+  const c2 = document.getElementById('icon2');
+  renderPixels(c2, F2, F2_W, F2_H);
+
+  // Card 3: Pong – both faces side by side
+  const c3 = document.getElementById('icon3');
+  const ctx3 = c3.getContext('2d');
+  ctx3.imageSmoothingEnabled = false;
+  ctx3.clearRect(0, 0, c3.width, c3.height);
+
+  // Each face gets half the canvas, scaled to 60% of that half
+  const half = c3.width / 2;
+  const scale3 = 0.50;
+
+  // Left: face1 (bald) – grid 23x27, ratio preserved via size calc
+  const s1 = Math.min((half * scale3) / F1_W, (c3.height * scale3) / F1_H);
+  const dw1 = F1_W * s1, dh1 = F1_H * s1;
+  const ox1 = (half - dw1) / 2;
+  const oy1 = (c3.height - dh1) / 2;
+  for (let r=0; r<F1_H; r++)
+    for (let c=0; c<F1_W; c++) {
+      const col = F1[r]&&F1[r][c]; if(!col) continue;
+      ctx3.fillStyle=col;
+      ctx3.fillRect(Math.round(ox1+c*s1), Math.round(oy1+r*s1), Math.ceil(s1)+1, Math.ceil(s1)+1);
+    }
+
+  // VS text
+  ctx3.fillStyle = '#33333388';
+  ctx3.font = 'bold 13px monospace';
+  ctx3.textAlign = 'center';
+  ctx3.fillText('VS', c3.width/2, c3.height/2 + 5);
+
+  // Right: face2 (brown hair) – grid 48x64, ratio 0.75 preserved
+  const s2 = Math.min((half * scale3) / F2_W, (c3.height * scale3) / F2_H);
+  const dw2 = F2_W * s2, dh2 = F2_H * s2;
+  const ox2 = half + (half - dw2) / 2;
+  const oy2 = (c3.height - dh2) / 2;
+  for (let r=0; r<F2_H; r++)
+    for (let c=0; c<F2_W; c++) {
+      const col = F2[r]&&F2[r][c]; if(!col) continue;
+      ctx3.fillStyle=col;
+      ctx3.fillRect(Math.round(ox2+c*s2), Math.round(oy2+r*s2), Math.ceil(s2)+1, Math.ceil(s2)+1);
+    }
+});
+
+// Fix Flappy Prosa link
+document.querySelectorAll('.card')[0].querySelector('.btn').href = 'flappy_prosa.html';
 </script>
 </body>
 </html>
