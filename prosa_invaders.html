@@ -201,31 +201,83 @@ let ship,aliens,bullets,aBullets,score,lives,level,state,moveDir,moveTimer,dropP
 const keys={};
 
 function getFormation(lvl){
-  // 3 formations cycling: 1=grid, 2=V-shape, 3=diamond/checkerboard
-  const f = ((lvl-1)%3)+1;
+  const f=((lvl-1)%7)+1;
   const startX=W/2-(COLS*CELL_W)/2+CELL_W/2;
+  const pts=(r)=>(ROWS-r)*10+(lvl-1)*5;
+  const mk=(c,r)=>({x:startX+c*CELL_W,y:80+r*CELL_H,col:c,row:r,alive:true,pts:pts(r),tint:r%cityTints.length});
   const list=[];
-  for(let r=0;r<ROWS;r++){
-    for(let c=0;c<COLS;c++){
-      let include=true;
-      if(f===2){
-        // V-shape: bottom rows wider, top rows narrower
-        const margin=Math.floor((ROWS-1-r)*0.7);
-        if(c<margin||c>=COLS-margin) include=false;
-      } else if(f===3){
-        // Checkerboard: only even sum positions
-        if((r+c)%2!==0) include=false;
-      }
-      if(include){
-        list.push({
-          x:startX+c*CELL_W, y:80+r*CELL_H,
-          col:c, row:r, alive:true,
-          pts:(ROWS-r)*10 + (lvl-1)*5,
-          tint:r%cityTints.length
-        });
-      }
-    }
+
+  if(f===1){
+    // Classic grid
+    for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) list.push(mk(c,r));
+
+  } else if(f===2){
+    // Arrow pointing DOWN ▼
+    const arrow=[
+      [0,0,0,1,1,0,0,0],
+      [0,0,1,1,1,1,0,0],
+      [0,1,1,1,1,1,1,0],
+      [1,1,1,1,1,1,1,1],
+      [0,0,0,1,1,0,0,0],
+    ];
+    for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) if(arrow[r][c]) list.push(mk(c,r));
+
+  } else if(f===3){
+    // Smiley face 😊
+    const smiley=[
+      [0,1,1,0,0,1,1,0],
+      [1,0,0,1,1,0,0,1],
+      [1,0,0,0,0,0,0,1],
+      [1,1,0,0,0,0,1,1],
+      [0,1,1,1,1,1,1,0],
+    ];
+    for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) if(smiley[r][c]) list.push(mk(c,r));
+
+  } else if(f===4){
+    // Spiral (outside ring first, then inner)
+    const grid=Array.from({length:ROWS},()=>Array(COLS).fill(0));
+    // outer ring
+    for(let c=0;c<COLS;c++){ grid[0][c]=1; grid[ROWS-1][c]=1; }
+    for(let r=1;r<ROWS-1;r++){ grid[r][0]=1; grid[r][COLS-1]=1; }
+    // inner ring
+    for(let c=2;c<COLS-2;c++){ grid[1][c]=1; grid[ROWS-2][c]=1; }
+    for(let r=2;r<ROWS-2;r++){ grid[r][2]=1; grid[r][COLS-3]=1; }
+    // center
+    grid[2][3]=1; grid[2][4]=1;
+    for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) if(grid[r][c]) list.push(mk(c,r));
+
+  } else if(f===5){
+    // Random chaos (but seeded by level for consistency)
+    // Use a simple pseudo-random based on level
+    let seed=lvl*1337;
+    const rand=()=>{ seed=(seed*16807+0)%2147483647; return seed/2147483647; };
+    for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) if(rand()>0.35) list.push(mk(c,r));
+    // make sure at least 20 aliens
+    if(list.length<20) for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) if(!list.find(a=>a.col===c&&a.row===r)) list.push(mk(c,r));
+
+  } else if(f===6){
+    // X shape ✕
+    const x=[
+      [1,1,0,0,0,0,1,1],
+      [0,1,1,0,0,1,1,0],
+      [0,0,1,1,1,1,0,0],
+      [0,1,1,0,0,1,1,0],
+      [1,1,0,0,0,0,1,1],
+    ];
+    for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) if(x[r][c]) list.push(mk(c,r));
+
+  } else if(f===7){
+    // Diamond ◆
+    const diamond=[
+      [0,0,0,1,1,0,0,0],
+      [0,0,1,1,1,1,0,0],
+      [0,1,1,1,1,1,1,0],
+      [0,0,1,1,1,1,0,0],
+      [0,0,0,1,1,0,0,0],
+    ];
+    for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) if(diamond[r][c]) list.push(mk(c,r));
   }
+
   return list;
 }
 
@@ -370,7 +422,7 @@ function update(){
   // Alien movement
   const alive=aliens.filter(a=>a.alive);
   if(!alive.length){ state='levelup'; return; }
-  const interval=Math.max(8, 52 - level*6);
+  const interval=Math.max(6, 52 - level*8);
   moveTimer++;
   if(moveTimer>=interval){
     moveTimer=0;
@@ -431,8 +483,8 @@ function loop(){
     ctx.font='bold 30px monospace'; ctx.fillStyle='#FFD700';
     ctx.fillText('LEVEL '+level+' geschafft!',W/2,H/2-20);
     ctx.font='16px monospace'; ctx.fillStyle='#00FFAA';
-    const formations=['','Klassisch','V-Formation','Schachbrett'];
-    ctx.fillText('Nächste Formation: '+formations[((level)%3)+1],W/2,H/2+16);
+    const formations=['','Klassisch','Pfeil ▼','Smiley 😊','Spirale','Chaos 🎲','X-Form ✕','Diamant ◆'];
+    ctx.fillText('Nächste Formation: '+formations[((level)%7)+1],W/2,H/2+16);
     ctx.font='13px monospace'; ctx.fillStyle='#aaa';
     ctx.fillText('LEERTASTE zum Weiterspielen',W/2,H/2+46);
     requestAnimationFrame(loop);
