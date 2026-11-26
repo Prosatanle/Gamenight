@@ -290,6 +290,7 @@ const STEP=1000/60;
 let acc=0,last=performance.now();
 function loop(now){
   acc+=Math.min(now-last,250); last=now;
+  if(paused) acc=0;
   while(acc>=STEP){update();acc-=STEP;}
   draw();
   requestAnimationFrame(loop);

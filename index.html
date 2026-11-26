@@ -15,6 +15,7 @@
     --accent1: #ff4d2e;
     --accent2: #3d8bff;
     --accent3: #00FFAA;
+    --violet: #b46bff;
     --border: #2a2a4a;
     --font: ui-monospace, 'SF Mono', Menlo, Consolas, 'Courier New', monospace;
   }
@@ -112,9 +113,9 @@
   main {
     padding: 3rem 2.5rem;
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr));
     gap: 2rem;
-    max-width: 1440px;
+    max-width: 1180px;
     margin: 0 auto;
   }
 
@@ -178,10 +179,12 @@
   .card:nth-child(1) .card-visual { background: linear-gradient(#b8cad8, #6a6a6a); }
   .card:nth-child(2) .card-visual { background: #06061a; }
   .card:nth-child(3) .card-visual { background: #06061a; }
+  .card:nth-child(4) .card-visual { background: linear-gradient(#0a0a1a, #1d0f3a); }
 
   .card:nth-child(1) { --card-accent: var(--gold); }
   .card:nth-child(2) { --card-accent: var(--neon); }
   .card:nth-child(3) { --card-accent: var(--accent1); }
+  .card:nth-child(4) { --card-accent: var(--violet); }
 
   .card-body {
     padding: 1.2rem 1.4rem 1.4rem;
@@ -267,12 +270,14 @@
   .footer-dots span:nth-child(1) { background: var(--gold);  color: var(--gold); }
   .footer-dots span:nth-child(2) { background: var(--neon);  color: var(--neon); }
   .footer-dots span:nth-child(3) { background: var(--accent1); color: var(--accent1); }
+  .footer-dots span:nth-child(4) { background: var(--violet); color: var(--violet); }
 
   /* ── Einblenden beim Laden ── */
   .card { animation: cardIn 0.5s ease backwards; }
   .card:nth-child(1) { animation-delay: 0.1s; }
   .card:nth-child(2) { animation-delay: 0.2s; }
   .card:nth-child(3) { animation-delay: 0.3s; }
+  .card:nth-child(4) { animation-delay: 0.4s; }
   @keyframes cardIn {
     from { opacity:0; transform:translateY(20px); }
     to   { opacity:1; transform:translateY(0); }
@@ -297,15 +302,19 @@
       <span>FLAPPY PROSA</span><span class="dot">✦</span>
       <span>PROSA INVADERS</span><span class="dot">✦</span>
       <span>PONG</span><span class="dot">✦</span>
+      <span>PROSA JUMP</span><span class="dot">✦</span>
       <span>FLAPPY PROSA</span><span class="dot">✦</span>
       <span>PROSA INVADERS</span><span class="dot">✦</span>
       <span>PONG</span><span class="dot">✦</span>
+      <span>PROSA JUMP</span><span class="dot">✦</span>
       <span>FLAPPY PROSA</span><span class="dot">✦</span>
       <span>PROSA INVADERS</span><span class="dot">✦</span>
       <span>PONG</span><span class="dot">✦</span>
+      <span>PROSA JUMP</span><span class="dot">✦</span>
       <span>FLAPPY PROSA</span><span class="dot">✦</span>
       <span>PROSA INVADERS</span><span class="dot">✦</span>
       <span>PONG</span><span class="dot">✦</span>
+      <span>PROSA JUMP</span><span class="dot">✦</span>
     </div>
   </div>
 
@@ -313,7 +322,7 @@
 
     <!-- Flappy Prosa -->
     <div class="card">
-      <div class="card-number">01 / 03</div>
+      <div class="card-number">01 / 04</div>
       <div class="card-visual">
         <canvas id="icon1" width="480" height="360"></canvas>
         <canvas class="demo" width="480" height="360" aria-hidden="true"></canvas>
@@ -330,7 +339,7 @@
 
     <!-- Prosa Invaders -->
     <div class="card">
-      <div class="card-number">02 / 03</div>
+      <div class="card-number">02 / 04</div>
       <div class="card-visual">
         <canvas id="icon2" width="480" height="360"></canvas>
         <canvas class="demo" width="480" height="360" aria-hidden="true"></canvas>
@@ -346,7 +355,7 @@
     </div>
 
     <div class="card">
-      <div class="card-number">03 / 03</div>
+      <div class="card-number">03 / 04</div>
       <div class="card-visual">
         <canvas id="icon3" width="480" height="360"></canvas>
         <canvas class="demo" width="480" height="360" aria-hidden="true"></canvas>
@@ -361,12 +370,29 @@
       </div>
     </div>
 
+    <!-- Prosa Jump -->
+    <div class="card">
+      <div class="card-number">04 / 04</div>
+      <div class="card-visual">
+        <canvas id="icon4" width="480" height="360"></canvas>
+        <canvas class="demo" width="480" height="360" aria-hidden="true"></canvas>
+        <span class="peek">▶ Vorschau</span>
+      </div>
+      <div class="card-body">
+        <div>
+          <div class="card-title">Prosa Jump</div>
+          <div><span class="card-badge">1 Spieler</span></div>
+        </div>
+        <a class="btn" href="prosa_jump.html">▶ &nbsp;Spielen</a>
+      </div>
+    </div>
+
   </main>
 
   <footer>
     <p>Prosa Game Night &nbsp;·&nbsp; Viel Spaß & gute Nerven 🎮</p>
     <div class="footer-dots">
-      <span></span><span></span><span></span>
+      <span></span><span></span><span></span><span></span>
     </div>
   </footer>
 
@@ -620,8 +646,89 @@ const demoPong={
   }
 };
 
+
+// ── Prosa Jump ──
+const TAN=new Image(); TAN.src='data:image/png;base64,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';
+function drawTanCube(x,cx,cy,size,rot){
+  x.save(); x.translate(cx,cy); x.rotate(rot*Math.PI/180);
+  x.shadowColor='#b46bff'; x.shadowBlur=14; x.fillStyle='#b46bff'; x.fillRect(-size/2,-size/2,size,size); x.shadowBlur=0;
+  x.imageSmoothingEnabled=false;
+  if(TAN.complete) x.drawImage(TAN,-size/2+size*0.08,-size/2+size*0.08,size*0.84,size*0.84);
+  x.strokeStyle='#1a0d33'; x.lineWidth=Math.max(3,size/14); x.strokeRect(-size/2+x.lineWidth/2,-size/2+x.lineWidth/2,size-x.lineWidth,size-x.lineWidth);
+  x.restore();
+}
+const demoJump={
+  U:38, S:38, GY:300, PX:110, GRAV:0.95, JUMP:-13.8, SPD:6.2,
+  PAT:[{s:[0]},{s:[0,1]},{b:[[0,2,1]]},{b:[[0,3,1]],s:[3]},{b:[[0,2,1],[2,2,2]]},{s:[0,4]}],
+  reset(){ this.y=this.GY-this.S; this.vy=0; this.rot=0; this.g=true; this.obs=[]; this.next=DW+40; this.dist=0; this.trail=[];
+    this.sky=Array.from({length:14},(_,i)=>({x:i*40,w:30+(i*37)%30,h:50+(i*53)%110})); },
+  spawn(x){
+    const p=this.PAT[Math.floor(Math.random()*this.PAT.length)], U=this.U; let end=x;
+    (p.b||[]).forEach(([bx,bw,bh])=>{ this.obs.push({k:'b',x:x+bx*U,y:this.GY-bh*U,w:bw*U,h:bh*U}); end=Math.max(end,x+(bx+bw)*U); });
+    (p.s||[]).forEach(sx=>{ this.obs.push({k:'s',x:x+sx*U,y:this.GY-U,w:U,h:U}); end=Math.max(end,x+(sx+1)*U); });
+    return end;
+  },
+  phys(st,off){   // ein Schritt Physik + Kollision; gibt false zurück, wenn der Würfel aufprallt
+    const S=this.S, prev=st.y+S;
+    st.vy+=this.GRAV; st.y+=st.vy; st.g=false;
+    if(st.y+S>=this.GY){ st.y=this.GY-S; st.vy=0; st.g=true; }
+    const L=this.PX+3, R=this.PX+S-3;
+    for(const o of this.obs){ const ox=o.x-off;
+      if(o.k==='b'){ if(R<=ox||L>=ox+o.w||st.y+S<=o.y) continue;
+        if(st.vy>=0&&prev<=o.y+st.vy+2){ st.y=o.y-S; st.vy=0; st.g=true; } else if(st.y<o.y+o.h-4) return false; }
+      else { const a=ox+o.w*0.3,b=ox+o.w*0.7,c=o.y+o.h*0.4;
+        if(this.PX+5<b&&this.PX+S-5>a&&st.y+5<o.y+o.h&&st.y+S-3>c) return false; }
+    }
+    return true;
+  },
+  survives(jump){   // plant ein paar Sprünge voraus: kommt der Würfel heil durch?
+    const seen=new Set();
+    const go=(st,f,j)=>{
+      if(f>44) return true;
+      const s={y:st.y,vy:st.vy,g:st.g};
+      if(s.g&&j){ s.vy=this.JUMP; s.g=false; }
+      if(!this.phys(s,this.SPD*f)) return false;
+      const k=f+'|'+Math.round(s.y)+'|'+s.g; if(seen.has(k+j)) return false; seen.add(k+j);
+      return s.g ? (go(s,f+1,false)||go(s,f+1,true)) : go(s,f+1,false);
+    };
+    return go({y:this.y,vy:this.vy,g:this.g},0,jump);
+  },
+  step(){
+    this.dist+=this.SPD;
+    this.obs.forEach(o=>o.x-=this.SPD); this.obs=this.obs.filter(o=>o.x+o.w>-40);
+    this.next-=this.SPD; if(this.next<DW+20) this.next=this.spawn(this.next)+this.U*(5+Math.random()*3);
+    this.sky.forEach(b=>{ b.x-=this.SPD*0.3; if(b.x+b.w<0) b.x+=560; });
+    const jump=this.g && !this.survives(false) && this.survives(true);   // Autopilot
+    const st={y:this.y,vy:this.vy,g:this.g};
+    if(jump){ st.vy=this.JUMP; st.g=false; }
+    if(!this.phys(st,0)){ this.reset(); return; }
+    this.y=st.y; this.vy=st.vy; this.g=st.g;
+    if(this.g){ this.rot=Math.round(this.rot/90)*90; this.trail.push({x:this.PX+2,y:this.y+this.S-3,l:1}); } else this.rot+=6.2;
+    this.trail.forEach(t=>{ t.x-=this.SPD; t.l-=0.06; }); this.trail=this.trail.filter(t=>t.l>0);
+  },
+  draw(x){
+    const GY=this.GY, U=this.U;
+    const g=x.createLinearGradient(0,0,0,GY); g.addColorStop(0,'#0a0a1a'); g.addColorStop(1,'#1d0f3a');
+    x.fillStyle=g; x.fillRect(0,0,DW,GY);
+    STARS.forEach(s=>{ if(s.y<GY-80){ x.fillStyle=`rgba(255,255,255,${s.b*0.7})`; x.fillRect(s.x,s.y,s.s,s.s); } });
+    x.fillStyle='#151233'; this.sky.forEach(b=>x.fillRect(b.x,GY-b.h,b.w,b.h));
+    x.fillStyle='#12122a'; x.fillRect(0,GY,DW,DH-GY);
+    x.strokeStyle='rgba(180,107,255,0.18)'; x.lineWidth=1;
+    for(let gx=-(this.dist%U);gx<DW;gx+=U){ x.beginPath(); x.moveTo(gx,GY); x.lineTo(gx-30,DH); x.stroke(); }
+    x.shadowColor='#b46bff'; x.shadowBlur=12; x.fillStyle='#b46bff'; x.fillRect(0,GY,DW,2); x.shadowBlur=0;
+    this.obs.forEach(o=>{
+      if(o.k==='b'){ x.fillStyle='#101a33'; x.fillRect(o.x,o.y,o.w,o.h);
+        x.shadowColor='#00e5ff'; x.shadowBlur=10; x.strokeStyle='#00e5ff'; x.lineWidth=2.5; x.strokeRect(o.x+1,o.y+1,o.w-2,o.h-2); x.shadowBlur=0; }
+      else { x.beginPath(); x.moveTo(o.x+2,o.y+o.h); x.lineTo(o.x+o.w/2,o.y+2); x.lineTo(o.x+o.w-2,o.y+o.h); x.closePath();
+        x.fillStyle='#2a0f22'; x.fill(); x.shadowColor='#ff3d6e'; x.shadowBlur=10; x.strokeStyle='#ff3d6e'; x.lineWidth=2.5; x.stroke(); x.shadowBlur=0; }
+    });
+    x.fillStyle='#b46bff'; this.trail.forEach(t=>{ x.globalAlpha=t.l*0.7; x.fillRect(t.x,t.y,5,3); }); x.globalAlpha=1;
+    drawTanCube(x,this.PX+this.S/2,this.y+this.S/2,this.S,this.rot);
+  }
+};
+
 // ── Vorschau steuern: Maus drüber (Computer) bzw. sichtbar (Handy) ──
-const DEMOS=[demoFlappy,demoInvaders,demoPong];
+const DEMOS=[demoFlappy,demoInvaders,demoPong,demoJump];
 const live=new Set();
 document.querySelectorAll('.card').forEach((card,i)=>{
   const cv=card.querySelector('canvas.demo'); if(!cv||!DEMOS[i]) return;
@@ -728,6 +835,18 @@ window.addEventListener('load', () => {
       ctx3.fillStyle=col;
       ctx3.fillRect(Math.round(ox2+c*s2), Math.round(oy2+r*s2), Math.ceil(s2)+1, Math.ceil(s2)+1);
     }
+
+  // Card 4: Prosa Jump – Tan als Würfel über einem Stachel
+  const c4 = document.getElementById('icon4'), ctx4 = c4.getContext('2d');
+  const drawIcon4 = () => {
+    ctx4.clearRect(0,0,c4.width,c4.height);
+    ctx4.fillStyle='#12122a'; ctx4.fillRect(0,270,c4.width,90);
+    ctx4.shadowColor='#b46bff'; ctx4.shadowBlur=12; ctx4.fillStyle='#b46bff'; ctx4.fillRect(0,270,c4.width,3); ctx4.shadowBlur=0;
+    [[300,0],[338,0]].forEach(([sx])=>{ ctx4.beginPath(); ctx4.moveTo(sx+2,270); ctx4.lineTo(sx+19,234); ctx4.lineTo(sx+36,270); ctx4.closePath();
+      ctx4.fillStyle='#2a0f22'; ctx4.fill(); ctx4.shadowColor='#ff3d6e'; ctx4.shadowBlur=10; ctx4.strokeStyle='#ff3d6e'; ctx4.lineWidth=2.5; ctx4.stroke(); ctx4.shadowBlur=0; });
+    drawTanCube(ctx4,210,150,130,-12);
+  };
+  if(TAN.complete) drawIcon4(); else TAN.onload=drawIcon4;
 });
 
 </script>
