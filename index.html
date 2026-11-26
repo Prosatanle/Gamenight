@@ -4,35 +4,48 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Prosa Game Night</title>
-<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #f4f2ee;
-    --card: #ffffff;
-    --ink: #111111;
-    --ink2: #555555;
+    --bg: #0a0a1a;
+    --card: #12122a;
+    --ink: #f2f2f2;
+    --ink2: #8a8aa8;
+    --gold: #FFD700;
+    --neon: #00FFAA;
     --accent1: #ff4d2e;
-    --accent2: #0057ff;
-    --accent3: #00c87a;
-    --border: #e0ddd8;
-    --shadow: 0 2px 0 #111;
+    --accent2: #3d8bff;
+    --accent3: #00FFAA;
+    --border: #2a2a4a;
+    --font: ui-monospace, 'SF Mono', Menlo, Consolas, 'Courier New', monospace;
   }
 
   * { margin:0; padding:0; box-sizing:border-box; }
 
   body {
     background: var(--bg);
-    font-family: 'Space Mono', monospace;
+    color: var(--ink);
+    font-family: var(--font);
     min-height: 100vh;
     overflow-x: hidden;
   }
 
-  /* ── Grain overlay ── */
+  /* ── Sterne + Scanlines ── */
   body::before {
     content:'';
     position:fixed; inset:0; z-index:0; pointer-events:none;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
-    opacity: 0.4;
+    background-image:
+      radial-gradient(1px 1px at 12% 18%, #fff8 50%, transparent 51%),
+      radial-gradient(1px 1px at 78% 12%, #fff6 50%, transparent 51%),
+      radial-gradient(2px 2px at 35% 72%, #fff5 50%, transparent 51%),
+      radial-gradient(1px 1px at 88% 64%, #fff7 50%, transparent 51%),
+      radial-gradient(1px 1px at 55% 40%, #fff4 50%, transparent 51%),
+      radial-gradient(2px 2px at 8% 88%, #fff5 50%, transparent 51%),
+      radial-gradient(1px 1px at 64% 92%, #fff6 50%, transparent 51%);
+  }
+  body::after {
+    content:'';
+    position:fixed; inset:0; z-index:2; pointer-events:none;
+    background: repeating-linear-gradient(to bottom, rgba(255,255,255,0.025) 0 1px, transparent 1px 3px);
   }
 
   .page { position:relative; z-index:1; }
@@ -40,7 +53,7 @@
   /* ── Header ── */
   header {
     padding: 3rem 2.5rem 1.5rem;
-    border-bottom: 2px solid var(--ink);
+    border-bottom: 2px solid var(--border);
     display: flex;
     align-items: flex-end;
     justify-content: space-between;
@@ -49,44 +62,45 @@
   }
 
   .logo {
-    font-family: 'Syne', sans-serif;
     font-weight: 800;
     font-size: clamp(2rem, 6vw, 3.8rem);
     line-height: 1;
-    color: var(--ink);
-    letter-spacing: -2px;
+    color: var(--gold);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    text-shadow: 0 0 18px rgba(255,215,0,0.55), 3px 3px 0 #7a5a00;
   }
 
   .logo span {
     display: inline-block;
-    background: var(--accent1);
-    color: #fff;
-    padding: 0 10px 2px;
-    border-radius: 4px;
+    text-shadow: none;
     margin-right: 6px;
   }
 
   .tagline {
-    font-size: 11px;
-    color: var(--ink2);
+    font-size: 12px;
+    color: var(--neon);
     letter-spacing: 0.12em;
     text-transform: uppercase;
     padding-bottom: 6px;
+    text-shadow: 0 0 10px rgba(0,255,170,0.5);
+    animation: blink 1.6s steps(2, start) infinite;
   }
+  @keyframes blink { to { opacity: 0.35; } }
 
   /* ── Ticker ── */
   .ticker-wrap {
     overflow: hidden;
-    border-bottom: 2px solid var(--ink);
-    background: var(--ink);
+    border-bottom: 2px solid var(--border);
+    background: #000;
     padding: 10px 0;
     white-space: nowrap;
   }
   .ticker {
     display: inline-block;
     animation: ticker 18s linear infinite;
-    color: #fff;
-    font-size: 12px;
+    color: var(--gold);
+    font-size: 13px;
     letter-spacing: 0.15em;
     text-transform: uppercase;
   }
@@ -107,9 +121,9 @@
   /* ── Game card ── */
   .card {
     background: var(--card);
-    border: 2px solid var(--ink);
-    border-radius: 4px;
-    box-shadow: var(--shadow);
+    border: 2px solid var(--card-accent);
+    border-radius: 14px;
+    box-shadow: 0 0 0 1px #000, 0 0 18px -4px var(--card-accent);
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -118,27 +132,22 @@
   }
 
   .card:hover {
-    transform: translate(-2px, -2px);
-    box-shadow: 4px 4px 0 var(--ink);
+    transform: translateY(-4px);
+    box-shadow: 0 0 0 1px #000, 0 0 32px -2px var(--card-accent);
   }
 
   .card-number {
     position: absolute;
     top: 14px; right: 16px;
-    font-family: 'Syne', sans-serif;
     font-size: 11px;
     font-weight: 700;
-    color: var(--ink2);
+    color: var(--card-accent);
     letter-spacing: 0.1em;
-    opacity: 0.5;
+    z-index: 1;
   }
 
   .card-visual {
     height: 160px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 5rem;
     border-bottom: 2px solid var(--border);
     position: relative;
     overflow: hidden;
@@ -149,33 +158,17 @@
     inset: 0;
     width: 100%;
     height: 100%;
+    image-rendering: pixelated;
   }
 
-  .card-visual .emoji-bg {
-    font-size: 4.5rem;
-    filter: drop-shadow(0 4px 12px rgba(0,0,0,0.08));
-    position: relative;
-    z-index: 1;
-    animation: float 3s ease-in-out infinite;
-  }
+  /* Hintergrund je Spiel wie im Spiel selbst */
+  .card:nth-child(1) .card-visual { background: linear-gradient(#b8cad8, #6a6a6a); }
+  .card:nth-child(2) .card-visual { background: #06061a; }
+  .card:nth-child(3) .card-visual { background: #06061a; }
 
-  @keyframes float {
-    0%,100% { transform: translateY(0px); }
-    50% { transform: translateY(-8px); }
-  }
-
-  /* Each card gets its own accent strip */
-  .card:nth-child(1) .card-visual { background: #fff5f3; }
-  .card:nth-child(2) .card-visual { background: #f0f4ff; }
-  .card:nth-child(3) .card-visual { background: #f0fff8; }
-  .card:nth-child(4) .card-visual { background: #fffbf0; }
-  .card:nth-child(5) .card-visual { background: #fdf0ff; }
-
-  .card:nth-child(1) { --card-accent: var(--accent1); }
-  .card:nth-child(2) { --card-accent: var(--accent2); }
-  .card:nth-child(3) { --card-accent: var(--accent3); }
-  .card:nth-child(4) { --card-accent: #ff9900; }
-  .card:nth-child(5) { --card-accent: #aa00ff; }
+  .card:nth-child(1) { --card-accent: var(--gold); }
+  .card:nth-child(2) { --card-accent: var(--neon); }
+  .card:nth-child(3) { --card-accent: var(--accent1); }
 
   .card-body {
     padding: 1.2rem 1.4rem 1.4rem;
@@ -186,67 +179,57 @@
   }
 
   .card-title {
-    font-family: 'Syne', sans-serif;
-    font-size: 1.35rem;
+    font-size: 1.4rem;
     font-weight: 800;
-    color: var(--ink);
-    letter-spacing: -0.5px;
+    color: var(--card-accent);
+    letter-spacing: 1px;
+    text-transform: uppercase;
     line-height: 1.1;
+    text-shadow: 0 0 12px var(--card-accent);
   }
 
   .card-badge {
     display: inline-block;
-    font-size: 9px;
+    margin-top: 8px;
+    font-size: 10px;
     font-weight: 700;
     letter-spacing: 0.12em;
     text-transform: uppercase;
-    background: var(--card-accent);
-    color: #fff;
+    color: var(--card-accent);
+    border: 1px solid var(--card-accent);
     padding: 3px 8px;
-    border-radius: 2px;
+    border-radius: 3px;
   }
 
   .btn {
     display: block;
     width: 100%;
-    padding: 0.75rem;
-    background: var(--ink);
-    color: #fff;
-    border: 2px solid var(--ink);
-    border-radius: 3px;
-    font-family: 'Space Mono', monospace;
-    font-size: 13px;
+    padding: 0.8rem;
+    background: transparent;
+    color: var(--card-accent);
+    border: 2px solid var(--card-accent);
+    border-radius: 8px;
+    font-family: var(--font);
+    font-size: 14px;
     font-weight: 700;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
     text-align: center;
     text-decoration: none;
     cursor: pointer;
-    transition: background 0.12s, color 0.12s, transform 0.1s;
+    transition: background 0.12s, color 0.12s;
     margin-top: auto;
   }
 
-  .btn:hover {
+  .btn:hover, .btn:focus-visible {
     background: var(--card-accent);
-    border-color: var(--card-accent);
-    color: #fff;
-    transform: translateY(-1px);
-  }
-
-  /* ── Coming soon card ── */
-  .card.soon {
-    opacity: 0.55;
-    pointer-events: none;
-  }
-  .card.soon .btn {
-    background: var(--border);
-    border-color: var(--border);
-    color: var(--ink2);
+    color: #000;
+    outline: none;
   }
 
   /* ── Footer ── */
   footer {
-    border-top: 2px solid var(--ink);
+    border-top: 2px solid var(--border);
     padding: 1.5rem 2.5rem;
     display: flex;
     align-items: center;
@@ -262,45 +245,29 @@
     text-transform: uppercase;
   }
 
-  .footer-dots {
-    display: flex;
-    gap: 6px;
-  }
-
+  .footer-dots { display: flex; gap: 6px; }
   .footer-dots span {
     width: 10px; height: 10px;
     border-radius: 50%;
-    background: var(--border);
-    border: 2px solid var(--ink);
+    box-shadow: 0 0 8px currentColor;
   }
+  .footer-dots span:nth-child(1) { background: var(--gold);  color: var(--gold); }
+  .footer-dots span:nth-child(2) { background: var(--neon);  color: var(--neon); }
+  .footer-dots span:nth-child(3) { background: var(--accent1); color: var(--accent1); }
 
-  .footer-dots span:nth-child(1) { background: var(--accent1); }
-  .footer-dots span:nth-child(2) { background: var(--accent2); }
-  .footer-dots span:nth-child(3) { background: var(--accent3); }
-
-  /* ── Animations on load ── */
-  .card {
-    opacity: 0;
-    transform: translateY(20px);
-    animation: cardIn 0.5s ease forwards;
-  }
+  /* ── Einblenden beim Laden ── */
+  .card { animation: cardIn 0.5s ease backwards; }
   .card:nth-child(1) { animation-delay: 0.1s; }
   .card:nth-child(2) { animation-delay: 0.2s; }
   .card:nth-child(3) { animation-delay: 0.3s; }
-  .card:nth-child(4) { animation-delay: 0.4s; }
-  .card:nth-child(5) { animation-delay: 0.5s; }
-
   @keyframes cardIn {
-    to { opacity:1; transform:translateY(0); }
+    from { opacity:0; transform:translateY(20px); }
+    to   { opacity:1; transform:translateY(0); }
   }
 
-  header {
-    opacity: 0;
-    animation: fadeDown 0.6s ease 0.05s forwards;
-  }
-  @keyframes fadeDown {
-    from { opacity:0; transform:translateY(-10px); }
-    to   { opacity:1; transform:translateY(0); }
+  @media (max-width: 600px) {
+    header, main, footer { padding-left: 1rem; padding-right: 1rem; }
+    main { padding-top: 1.5rem; padding-bottom: 1.5rem; }
   }
 </style>
 </head>
@@ -333,29 +300,29 @@
 
     <!-- Flappy Prosa -->
     <div class="card">
-      <div class="card-number">01 / 02</div>
+      <div class="card-number">01 / 03</div>
       <div class="card-visual">
         <canvas id="icon1" width="400" height="320" style="position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated;"></canvas>
       </div>
       <div class="card-body">
         <div>
           <div class="card-title">Flappy Prosa</div>
-          <div style="margin-top:6px"><span class="card-badge">1 Spieler</span></div>
+          <div><span class="card-badge">1 Spieler</span></div>
         </div>
-        <a class="btn" href="index.html">▶ &nbsp;Spielen</a>
+        <a class="btn" href="flappy_prosa.html">▶ &nbsp;Spielen</a>
       </div>
     </div>
 
     <!-- Prosa Invaders -->
     <div class="card">
-      <div class="card-number">02 / 02</div>
+      <div class="card-number">02 / 03</div>
       <div class="card-visual">
         <canvas id="icon2" width="400" height="320" style="position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated;"></canvas>
       </div>
       <div class="card-body">
         <div>
           <div class="card-title">Prosa Invaders</div>
-          <div style="margin-top:6px"><span class="card-badge">1 Spieler</span></div>
+          <div><span class="card-badge">1 Spieler</span></div>
         </div>
         <a class="btn" href="prosa_invaders.html">▶ &nbsp;Spielen</a>
       </div>
@@ -369,7 +336,7 @@
       <div class="card-body">
         <div>
           <div class="card-title">Pong</div>
-          <div style="margin-top:6px"><span class="card-badge">2 Spieler</span></div>
+          <div><span class="card-badge">1–2 Spieler</span></div>
         </div>
         <a class="btn" href="pong.html">▶ &nbsp;Spielen</a>
       </div>
@@ -418,7 +385,7 @@ const F1=[
   [N,N,N,N,N,N,N,N,N,N,'#201d30','#1e1b2c','#c1917b','#c28f7a','#77655b','#c58d76','#7d6b61','#76635c','#201d2e',N,N,N,N],
   [N,N,N,N,N,N,N,N,N,N,N,N,'#211e2f','#1c172b','#201d32','#201d30','#211e2f','#1e1a2b',N,N,N,N,N],
 ];
-const F2_W=48, F2_H=64, F2_RATIO=0.7535;
+const F2_W=48, F2_H=64;
 const F2=[
   [N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,'#3b2d28','#4c3e3a','#4a3b38','#493936','#483834','#4d3c39','#382e2a',N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N],
   [N,N,N,N,N,N,N,N,N,N,N,N,N,'#36241f','#3a2920','#35241c','#2f1e18','#37221c','#563e33','#836f64','#897970','#89786e','#8a776c','#816b5e','#7a6253','#776052','#725c53','#4d3d37','#150e0b',N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N],
@@ -549,10 +516,10 @@ window.addEventListener('load', () => {
     }
 
   // VS text
-  ctx3.fillStyle = '#33333388';
-  ctx3.font = 'bold 13px monospace';
+  ctx3.fillStyle = '#ff4d2e';
+  ctx3.font = 'bold 22px monospace';
   ctx3.textAlign = 'center';
-  ctx3.fillText('VS', c3.width/2, c3.height/2 + 5);
+  ctx3.fillText('VS', c3.width/2, c3.height/2 + 8);
 
   // Right: face2 (brown hair) – grid 48x64, ratio 0.75 preserved
   const s2 = Math.min((half * scale3) / F2_W, (c3.height * scale3) / F2_H);
@@ -567,8 +534,6 @@ window.addEventListener('load', () => {
     }
 });
 
-// Fix Flappy Prosa link
-document.querySelectorAll('.card')[0].querySelector('.btn').href = 'flappy_prosa.html';
 </script>
 </body>
 </html>

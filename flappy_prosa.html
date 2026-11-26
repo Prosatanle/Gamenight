@@ -5,80 +5,98 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Flappy Prosa</title>
 <style>
+  :root { --acc:#FFD700; }
   * { margin:0; padding:0; box-sizing:border-box; }
   body {
-    background:#111;
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    justify-content:center;
-    min-height:100vh;
-    font-family:monospace;
-    user-select:none;
+    background:#0a0a1a; color:#8a8aa8;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    min-height:100vh; min-height:100dvh; padding:10px 0;
+    font-family:ui-monospace,'SF Mono',Menlo,Consolas,'Courier New',monospace;
+    user-select:none; -webkit-user-select:none; -webkit-tap-highlight-color:transparent;
   }
   #wrap { position:relative; }
-  canvas {
-    display:block;
-    border-radius:14px;
-    border:3px solid #333;
-    cursor:pointer;
-    image-rendering:pixelated;
+  #c {
+    display:block; border-radius:14px; border:3px solid #2a2a4a;
+    box-shadow:0 0 28px -8px var(--acc);
+    image-rendering:pixelated; height:auto; touch-action:none; cursor:pointer;
   }
-  #splash {
-    position:absolute;
-    inset:0;
-    border-radius:11px;
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    justify-content:center;
-    pointer-events:none;
-    z-index:10;
-    animation: splashFull 2.4s ease forwards;
-  }
-  @keyframes splashFull {
-    0%   { background:rgba(0,0,0,0);   opacity:0; }
-    15%  { background:rgba(0,0,0,0.88);opacity:1; }
-    70%  { background:rgba(0,0,0,0.88);opacity:1; }
-    100% { background:rgba(0,0,0,0);   opacity:0; }
-  }
-  #splash-title {
-    font-size:42px;
-    font-weight:bold;
-    color:#FFD700;
-    letter-spacing:4px;
-    opacity:0;
-    transform:scale(0.5);
-    animation:titlePop 0.5s cubic-bezier(0.34,1.56,0.64,1) 0.35s forwards;
-  }
-  @keyframes titlePop { to { opacity:1; transform:scale(1); } }
-  #splash-sub {
-    font-size:14px;
-    color:#aaa;
-    margin-top:12px;
-    opacity:0;
-    animation:subFade 0.4s ease 1s forwards;
-  }
-  @keyframes subFade { to { opacity:1; } }
-  #ui { display:flex; gap:3rem; margin-top:1rem; color:#777; font-size:14px; }
-  #ui b { color:#FFD700; font-size:18px; }
-  #hint { margin-top:.5rem; color:#555; font-size:12px; letter-spacing:.05em; }
-  #back { margin-top:1rem; font-size:11px; color:#999; text-decoration:none; letter-spacing:.08em; text-transform:uppercase; }
-  #back:hover { color:#FFD700; }
+  /* passt sich an Bildschirm an, Seitenverhältnis bleibt 400:580 */
+  #c { width:min(95vw, calc((100vh - 150px) * 400 / 580)); width:min(95vw, calc((100dvh - 150px) * 400 / 580)); }
+  #ui { display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:.3rem 1.6rem; margin-top:.8rem; padding:0 .5rem; font-size:13px; }
+  #ui b { color:var(--acc); font-size:17px; }
+  #hint { margin-top:.4rem; color:#55557a; font-size:11px; letter-spacing:.05em; text-align:center; padding:0 .5rem; }
+  #nav { display:flex; flex-wrap:wrap; justify-content:center; gap:.2rem 1.4rem; align-items:center; margin-top:.6rem; }
+  #nav a, #nav button { font-family:inherit; font-size:11px; color:#8a8aa8; text-decoration:none; letter-spacing:.08em; text-transform:uppercase; background:none; border:none; cursor:pointer; padding:8px 2px; }
+  #nav a:hover, #nav button:hover { color:var(--acc); }
 </style>
 </head>
 <body>
 <div id="wrap">
   <canvas id="c" width="400" height="580"></canvas>
-  <div id="splash">
-    <div id="splash-title">FLAPPY PROSA</div>
-    <div id="splash-sub">Klick oder LEERTASTE zum Starten</div>
-  </div>
 </div>
-<div id="ui">Punkte: <b id="sc">0</b> &nbsp;|&nbsp; Rekord: <b id="bs">0</b></div>
-<div id="hint">LEERTASTE oder KLICK zum Fliegen</div>
-
+<div id="ui"><span>Punkte: <b id="sc">0</b></span><span>Rekord: <b id="bs">0</b></span></div>
+<div id="hint"></div>
+<div id="nav">
+  <a id="back" href="index.html">← Menü</a>
+  <button id="pz" type="button">⏸ Pause</button>
+  <button id="snd" type="button">🔊 Ton an</button>
+  <button id="fs" type="button">⛶ Vollbild</button>
+</div>
 <script>
+// ── Gemeinsame Helfer: Touch-Erkennung, Sperre, Ton, Pause, Vollbild ──
+const TOUCH=matchMedia('(pointer: coarse)').matches;
+let paused=false, lockUntil=0, fsExitAt=0;
+const locked=()=>performance.now()<lockUntil;      // kurze Sperre nach Game Over
+function lockInput(ms){ lockUntil=performance.now()+(ms||1000); }
+
+let AC=null, muted=false;
+try{ muted=localStorage.getItem('prosaTon')==='aus'; }catch(e){}
+function beep(freq,dur,type,vol,slide){            // Töne werden im Browser erzeugt, keine Dateien
+  if(muted) return;
+  try{
+    AC=AC||new (window.AudioContext||window.webkitAudioContext)();
+    if(AC.state==='suspended') AC.resume();
+    dur=dur||0.08;
+    const t=AC.currentTime,o=AC.createOscillator(),g=AC.createGain();
+    o.type=type||'square'; o.frequency.setValueAtTime(freq,t);
+    if(slide) o.frequency.exponentialRampToValueAtTime(Math.max(30,freq+slide),t+dur);
+    g.gain.setValueAtTime(vol||0.05,t); g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    o.connect(g); g.connect(AC.destination); o.start(t); o.stop(t+dur+0.02);
+  }catch(e){}
+}
+const sndBtn=document.getElementById('snd');
+function showSnd(){ sndBtn.textContent=muted?'🔇 Ton aus':'🔊 Ton an'; }
+function toggleSnd(){ muted=!muted; try{localStorage.setItem('prosaTon',muted?'aus':'an');}catch(e){} showSnd(); }
+sndBtn.addEventListener('click',()=>{ toggleSnd(); sndBtn.blur(); });
+showSnd();
+
+function togglePause(){ if(state==='playing') paused=!paused; }
+document.getElementById('pz').addEventListener('click',e=>{ togglePause(); e.currentTarget.blur(); });
+document.addEventListener('visibilitychange',()=>{ if(document.hidden && state==='playing') paused=true; });
+document.addEventListener('fullscreenchange',()=>{ if(!document.fullscreenElement) fsExitAt=performance.now(); });
+document.addEventListener('keydown',e=>{
+  if(e.code==='KeyP') togglePause();
+  else if(e.code==='KeyM') toggleSnd();
+  else if(e.code==='Escape' && !document.fullscreenElement && performance.now()-fsExitAt>600) location.href='index.html';
+});
+
+(function(){
+  const btn=document.getElementById('fs'),de=document.documentElement;
+  const req=de.requestFullscreen||de.webkitRequestFullscreen;
+  if(!req){btn.style.display='none';return;}
+  btn.addEventListener('click',()=>{
+    btn.blur();
+    if(document.fullscreenElement||document.webkitFullscreenElement)
+      (document.exitFullscreen||document.webkitExitFullscreen).call(document);
+    else req.call(de);
+  });
+})();
+
+const PAUSE_SUB = TOUCH ? 'Tippen zum Weiterspielen' : 'P oder KLICK zum Weiterspielen';
+const KEYS_HINT = ' · P Pause · M Ton · Esc Menü';
+
+// Spiellogik läuft immer genau 60× pro Sekunde, egal wie schnell der Bildschirm ist
+
 const canvas=document.getElementById('c');
 const ctx=canvas.getContext('2d');
 ctx.imageSmoothingEnabled=false;
@@ -158,11 +176,12 @@ function reset(){
 }
 
 function flap(){
+  if(paused){ paused=false; return; }
   if(state==='waiting') state='playing';
-  if(state==='playing') bird.vy=FLAP;
-  if(state==='dead') reset();
+  if(state==='playing'){ bird.vy=FLAP; beep(520,0.07,'square',0.04,220); }
+  else if(state==='dead' && !locked()) reset();
 }
-canvas.addEventListener('click',flap);
+canvas.addEventListener('pointerdown',e=>{ e.preventDefault(); flap(); });
 document.addEventListener('keydown',e=>{if(e.code==='Space'){e.preventDefault();flap();}});
 
 function drawSky(){
@@ -231,10 +250,9 @@ function checkHit(){
   return false;
 }
 
-function loop(){
-  drawSky();
+// Spiellogik: läuft immer genau 60× pro Sekunde, egal wie schnell der Bildschirm ist
+function update(){
   clouds.forEach(c=>{if(state==='playing')c.x-=.35;if(c.x+90<0)c.x=W+50;});
-  drawClouds();
   if(state==='playing'){
     frame++;
     bird.vy+=GRAV;bird.y+=bird.vy;
@@ -247,24 +265,38 @@ function loop(){
     pipes=pipes.filter(p=>p.x+PW>-20);
     pipes.forEach(p=>{
       if(!p.scored&&p.x+PW<bird.x){
-        p.scored=true;score++;scEl.textContent=score;
+        p.scored=true;score++;scEl.textContent=score;beep(880,0.09,'square',0.04);
         if(score>best){best=score;bsEl.textContent=best;try{localStorage.setItem('flappyProsa',best);}catch(e){}}
       }
     });
-    if(checkHit())state='dead';
+    if(checkHit()){ state='dead'; lockInput(); beep(200,0.4,'sawtooth',0.06,-150); }
   }
+  if(state!=='playing')bird.angle=0;
+}
+
+function draw(){
+  drawSky();
+  drawClouds();
   pipes.forEach(drawPipe);
   drawGround();
-  if(state!=='playing')bird.angle=0;
   drawFace(bird.x,bird.y,46,bird.angle);
   drawScore();
-  if(state==='waiting')drawOverlay('FLAPPY PROSA','Klick oder LEERTASTE');
-  else if(state==='dead')drawOverlay('GAME OVER','Klick zum Neustart');
+  if(state==='waiting')drawOverlay('FLAPPY PROSA',TOUCH?'Tippen zum Starten':'KLICK oder LEERTASTE zum Starten');
+  else if(state==='dead')drawOverlay('GAME OVER',locked()?'':(TOUCH?'Tippen zum Neustart':'KLICK oder LEERTASTE zum Neustart'));
+  if(paused)drawOverlay('PAUSE',PAUSE_SUB);
+}
+
+const STEP=1000/60;
+let acc=0,last=performance.now();
+function loop(now){
+  acc+=Math.min(now-last,250); last=now;
+  while(acc>=STEP){update();acc-=STEP;}
+  draw();
   requestAnimationFrame(loop);
 }
-reset();loop();
-setTimeout(()=>{document.getElementById('splash').style.display='none';},2600);
+reset();draw();requestAnimationFrame(loop);
+document.getElementById('hint').textContent=TOUCH?'Tippen zum Fliegen':'LEERTASTE oder KLICK zum Fliegen'+KEYS_HINT;
+
 </script>
-<a id="back" href="index.html">← Zurück zum Menü</a>
 </body>
 </html>

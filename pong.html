@@ -5,79 +5,128 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Prosa Pong</title>
 <style>
+  :root { --acc:#ff4d2e; }
   * { margin:0; padding:0; box-sizing:border-box; }
   body {
-    background:#f4f2ee;
-    display:flex; flex-direction:column;
-    align-items:center; justify-content:center;
-    min-height:100vh; font-family:monospace;
-    user-select:none;
+    background:#0a0a1a; color:#8a8aa8;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    min-height:100vh; min-height:100dvh; padding:10px 0;
+    font-family:ui-monospace,'SF Mono',Menlo,Consolas,'Courier New',monospace;
+    user-select:none; -webkit-user-select:none; -webkit-tap-highlight-color:transparent;
   }
   #wrap { position:relative; }
-  canvas {
-    display:block; border-radius:14px;
-    border:3px solid #111; cursor:none;
-    image-rendering:pixelated;
-    box-shadow: 4px 4px 0 #111;
-    max-width: 95vw;
-    max-height: 75vh;
+  #c {
+    display:block; border-radius:14px; border:3px solid #2a2a4a;
+    box-shadow:0 0 28px -8px var(--acc);
+    image-rendering:pixelated; height:auto; touch-action:none; cursor:pointer;
   }
-  #ui {
-    display:flex; justify-content:space-between;
-    width:720px; max-width:95vw; margin-top:.8rem;
-    font-size:13px; color:#555;
+  /* passt sich an Bildschirm an, Seitenverhältnis bleibt 720:520 */
+  :root {
+    --cw: min(95vw, calc((100vh - 230px) * 720 / 520));
+    --cw: min(95vw, calc((100dvh - 230px) * 720 / 520));
   }
-  #ui b { color:#111; font-size:16px; }
-  #hint { margin-top:.4rem; color:#999; font-size:11px; letter-spacing:.05em; text-align:center; }
-  #back { margin-top:1rem; font-size:11px; color:#999; text-decoration:none; letter-spacing:.08em; text-transform:uppercase; }
-  #back:hover { color:#111; }
-
-  /* Splash */
-  #splash {
-    position:absolute; inset:0; border-radius:11px;
-    display:flex; flex-direction:column; align-items:center; justify-content:center;
-    pointer-events:none; z-index:10;
-    animation: splashFull 2.8s ease forwards;
+  #c { width:var(--cw); }
+  #ui { display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:.3rem 1.6rem; margin-top:.8rem; padding:0 .5rem; font-size:13px; }
+  #ui b { color:var(--acc); font-size:17px; }
+  #hint { margin-top:.4rem; color:#55557a; font-size:11px; letter-spacing:.05em; text-align:center; padding:0 .5rem; }
+  #nav { display:flex; flex-wrap:wrap; justify-content:center; gap:.2rem 1.4rem; align-items:center; margin-top:.6rem; }
+  #nav a, #nav button { font-family:inherit; font-size:11px; color:#8a8aa8; text-decoration:none; letter-spacing:.08em; text-transform:uppercase; background:none; border:none; cursor:pointer; padding:8px 2px; }
+  #nav a:hover, #nav button:hover { color:var(--acc); }
+  #ui { width:var(--cw); justify-content:space-between; }
+  .team { display:flex; align-items:center; gap:8px; }
+  .team canvas { image-rendering:pixelated; width:34px; height:auto; }
+  #modes { display:flex; flex-wrap:wrap; justify-content:center; gap:.6rem; margin-top:.7rem; }
+  #modes button {
+    font-family:inherit; font-size:12px; letter-spacing:.06em; text-transform:uppercase;
+    color:#8a8aa8; background:#12122a; border:2px solid #2a2a4a; border-radius:8px;
+    padding:.6rem .9rem; cursor:pointer;
   }
-  @keyframes splashFull {
-    0%   { background:rgba(0,0,0,0);   opacity:0; }
-    14%  { background:rgba(0,0,0,0.92);opacity:1; }
-    72%  { background:rgba(0,0,0,0.92);opacity:1; }
-    100% { background:rgba(0,0,0,0);   opacity:0; }
-  }
-  #splash-title {
-    font-size:42px; font-weight:bold; color:#FFD700;
-    letter-spacing:4px; opacity:0; transform:scale(0.4);
-    text-shadow:0 0 24px rgba(255,215,0,0.7);
-    animation:titlePop .5s cubic-bezier(0.34,1.56,0.64,1) .4s forwards;
-  }
-  @keyframes titlePop { to { opacity:1; transform:scale(1); } }
-  #splash-sub { font-size:13px; color:#ccc; margin-top:14px; opacity:0; animation:subFade .4s ease 1.1s forwards; }
-  @keyframes subFade { to { opacity:1; } }
+  #modes button[aria-pressed="true"] { color:#000; background:var(--acc); border-color:var(--acc); font-weight:700; }
 </style>
 </head>
 <body>
 <div id="wrap">
   <canvas id="c" width="720" height="520"></canvas>
-  <div id="splash">
-    <div id="splash-title">PROSA PONG</div>
-    <div id="splash-sub">Bereit? Drückt LEERTASTE!</div>
-  </div>
 </div>
 <div id="ui">
-  <span style="display:flex;align-items:center;gap:8px;">
-    <canvas id="icon1" width="46" height="54" style="image-rendering:pixelated;vertical-align:middle;"></canvas>
-    Team 1 (W/S): <b id="s1">0</b>
-  </span>
-  <span style="display:flex;align-items:center;gap:8px;">
-    Team 2 (↑/↓): <b id="s2">0</b>
-    <canvas id="icon2" width="46" height="61" style="image-rendering:pixelated;vertical-align:middle;"></canvas>
-  </span>
+  <span class="team"><canvas id="icon1" width="46" height="54"></canvas><span id="l1">Team 1:</span><b id="s1">0</b></span>
+  <span class="team"><span id="l2">Team 2:</span><b id="s2">0</b><canvas id="icon2" width="46" height="61"></canvas></span>
 </div>
-<div id="hint">W / S &nbsp;·&nbsp; Pfeiltasten ↑↓ &nbsp;·&nbsp; Bis 3 Punkte gewinnt</div>
-<a id="back" href="index.html">← Zurück zum Menü</a>
-
+<div id="modes">
+  <button type="button" data-m="1">1 Spieler · gegen Computer</button>
+  <button type="button" data-m="2">2 Spieler</button>
+</div>
+<div id="hint"></div>
+<div id="nav">
+  <a id="back" href="index.html">← Menü</a>
+  <button id="pz" type="button">⏸ Pause</button>
+  <button id="snd" type="button">🔊 Ton an</button>
+  <button id="fs" type="button">⛶ Vollbild</button>
+</div>
 <script>
+// ── Gemeinsame Helfer: Touch-Erkennung, Sperre, Ton, Pause, Vollbild ──
+const TOUCH=matchMedia('(pointer: coarse)').matches;
+let paused=false, lockUntil=0, fsExitAt=0;
+const locked=()=>performance.now()<lockUntil;      // kurze Sperre nach Game Over
+function lockInput(ms){ lockUntil=performance.now()+(ms||1000); }
+
+let AC=null, muted=false;
+try{ muted=localStorage.getItem('prosaTon')==='aus'; }catch(e){}
+function beep(freq,dur,type,vol,slide){            // Töne werden im Browser erzeugt, keine Dateien
+  if(muted) return;
+  try{
+    AC=AC||new (window.AudioContext||window.webkitAudioContext)();
+    if(AC.state==='suspended') AC.resume();
+    dur=dur||0.08;
+    const t=AC.currentTime,o=AC.createOscillator(),g=AC.createGain();
+    o.type=type||'square'; o.frequency.setValueAtTime(freq,t);
+    if(slide) o.frequency.exponentialRampToValueAtTime(Math.max(30,freq+slide),t+dur);
+    g.gain.setValueAtTime(vol||0.05,t); g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    o.connect(g); g.connect(AC.destination); o.start(t); o.stop(t+dur+0.02);
+  }catch(e){}
+}
+const sndBtn=document.getElementById('snd');
+function showSnd(){ sndBtn.textContent=muted?'🔇 Ton aus':'🔊 Ton an'; }
+function toggleSnd(){ muted=!muted; try{localStorage.setItem('prosaTon',muted?'aus':'an');}catch(e){} showSnd(); }
+sndBtn.addEventListener('click',()=>{ toggleSnd(); sndBtn.blur(); });
+showSnd();
+
+function togglePause(){ if(state==='playing') paused=!paused; }
+document.getElementById('pz').addEventListener('click',e=>{ togglePause(); e.currentTarget.blur(); });
+document.addEventListener('visibilitychange',()=>{ if(document.hidden && state==='playing') paused=true; });
+document.addEventListener('fullscreenchange',()=>{ if(!document.fullscreenElement) fsExitAt=performance.now(); });
+document.addEventListener('keydown',e=>{
+  if(e.code==='KeyP') togglePause();
+  else if(e.code==='KeyM') toggleSnd();
+  else if(e.code==='Escape' && !document.fullscreenElement && performance.now()-fsExitAt>600) location.href='index.html';
+});
+
+(function(){
+  const btn=document.getElementById('fs'),de=document.documentElement;
+  const req=de.requestFullscreen||de.webkitRequestFullscreen;
+  if(!req){btn.style.display='none';return;}
+  btn.addEventListener('click',()=>{
+    btn.blur();
+    if(document.fullscreenElement||document.webkitFullscreenElement)
+      (document.exitFullscreen||document.webkitExitFullscreen).call(document);
+    else req.call(de);
+  });
+})();
+
+const PAUSE_SUB = TOUCH ? 'Tippen zum Weiterspielen' : 'P oder KLICK zum Weiterspielen';
+const KEYS_HINT = ' · P Pause · M Ton · Esc Menü';
+
+// Spiellogik läuft immer genau 60× pro Sekunde, egal wie schnell der Bildschirm ist
+const STEP=1000/60;
+let acc=0,last=performance.now();
+function loop(now){
+  acc+=Math.min(now-last,250); last=now;
+  if(paused) acc=0;
+  while(acc>=STEP){update();acc-=STEP;}
+  draw();
+  requestAnimationFrame(loop);
+}
+
 const canvas=document.getElementById('c');
 const ctx=canvas.getContext('2d');
 ctx.imageSmoothingEnabled=false;
@@ -116,7 +165,7 @@ const P1=[
   [N,N,N,N,N,N,N,N,N,N,'#201d30','#1e1b2c','#c1917b','#c28f7a','#77655b','#c58d76','#7d6b61','#76635c','#201d2e',N,N,N,N],
   [N,N,N,N,N,N,N,N,N,N,N,N,'#211e2f','#1c172b','#201d32','#201d30','#211e2f','#1e1a2b',N,N,N,N,N],
 ];
-const P2_W=48, P2_H=64, P2_RATIO=0.7535;
+const P2_W=48, P2_H=64;
 const P2=[
   [N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,'#3b2d28','#4c3e3a','#4a3b38','#493936','#483834','#4d3c39','#382e2a',N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N],
   [N,N,N,N,N,N,N,N,N,N,N,N,N,'#36241f','#3a2920','#35241c','#2f1e18','#37221c','#563e33','#836f64','#897970','#89786e','#8a776c','#816b5e','#7a6253','#776052','#725c53','#4d3d37','#150e0b',N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N],
@@ -213,9 +262,16 @@ const PAD_SPEED=5;
 const BALL_SIZE=12;
 const WIN_SCORE=3;
 
+// ── Spielmodus: 1 = gegen den Computer, 2 = zwei Spieler ─────────
+let mode=TOUCH?1:2;
+try{ const m=localStorage.getItem('pongModus'); if(m==='1'||m==='2') mode=+m; }catch(e){}
+const AI_SPEED=4.2;     // wie schnell der Computer-Schläger ist (kleiner = leichter)
+const TOUCH_SPEED=11;   // wie schnell ein Schläger dem Finger folgt
+
 // ── Game state ────────────────────────────────────────────────────
 let p1y,p2y,ball,score1,score2,state,particles,lastScorer;
 const keys={};
+const ptrs=new Map();   // Finger/Maus auf dem Spielfeld → Seite + Zielhöhe
 
 function reset(fullReset=true){
   p1y=H/2-PAD_H/2;
@@ -235,6 +291,27 @@ function reset(fullReset=true){
   s2El.textContent=score2;
 }
 
+function updateLabels(){
+  document.getElementById('l1').textContent = mode===1 ? 'Du:' : 'Team 1:';
+  document.getElementById('l2').textContent = mode===1 ? 'Computer:' : 'Team 2:';
+  document.querySelectorAll('#modes button').forEach(b=>b.setAttribute('aria-pressed', String(+b.dataset.m===mode)));
+  let hint;
+  if(TOUCH) hint = mode===1 ? 'Finger auf dem Spielfeld hoch/runter ziehen · Bis 3 Punkte'
+                            : 'Jedes Team zieht auf seiner Spielfeld-Hälfte · Bis 3 Punkte';
+  else hint = (mode===1 ? 'W/S oder ↑/↓ (oder Maus ziehen)' : 'Team 1: W/S · Team 2: ↑/↓')
+              + ' · Bis 3 Punkte · 1/2 Spielerzahl' + KEYS_HINT;
+  document.getElementById('hint').textContent = hint;
+}
+
+function setMode(m){
+  mode=m;
+  try{ localStorage.setItem('pongModus', String(m)); }catch(e){}
+  paused=false; ptrs.clear();
+  updateLabels();
+  reset(true);
+}
+document.querySelectorAll('#modes button').forEach(b=>b.addEventListener('click',()=>{ setMode(+b.dataset.m); b.blur(); }));
+
 function spawnParticles(x,y,color){
   for(let i=0;i<12;i++){
     const angle=Math.random()*Math.PI*2;
@@ -248,31 +325,56 @@ function spawnParticles(x,y,color){
   }
 }
 
+function serve(){
+  // Ball fliegt zu dem, der gepunktet hat
+  const dir = lastScorer===1 ? 1 : -1;
+  const angle = (Math.random()*0.6-0.3);
+  ball.vx = dir * 4.5 * Math.cos(angle);
+  ball.vy = 4.5 * Math.sin(angle);
+  state='playing';
+}
+
+// Eine Aktion für Leertaste, Klick und Tippen
+function action(){
+  if(paused){ paused=false; return; }
+  if(state==='waiting') state='playing';
+  else if(state==='win'){ if(!locked()) reset(true); }
+  else if(state==='point') serve();
+}
+
 document.addEventListener('keydown',e=>{
   keys[e.code]=true;
-  if(e.code==='Space'){
-    e.preventDefault();
-    if(state==='waiting'){ state='playing'; }
-    else if(state==='win') reset(true);
-    else if(state==='paused'){
-      // Ball flies toward the scorer (positive vx = right = P1 direction, negative = left = P2)
-      const dir = lastScorer===1 ? 1 : -1;
-      const angle = (Math.random()*0.6-0.3);
-      ball.vx = dir * 4.5 * Math.cos(angle);
-      ball.vy = 4.5 * Math.sin(angle);
-      state='playing';
-    }
-  }
+  if(['Space','ArrowUp','ArrowDown'].includes(e.code)) e.preventDefault();
+  if(e.code==='Space') action();
+  if((e.code==='Digit1'||e.code==='Digit2') && state!=='playing') setMode(e.code==='Digit1'?1:2);
 });
 document.addEventListener('keyup',e=>keys[e.code]=false);
 
+// ── Touch / Maus: Schläger folgt dem Finger ───────────────────────
+function pointerY(e){
+  const r=canvas.getBoundingClientRect();
+  return { x:(e.clientX-r.left)/r.width*W, y:(e.clientY-r.top)/r.height*H };
+}
+canvas.addEventListener('pointerdown',e=>{
+  e.preventDefault();
+  if(paused||state!=='playing') action();
+  const p=pointerY(e);
+  ptrs.set(e.pointerId,{ side: mode===1 ? 1 : (p.x<W/2 ? 1 : 2), y:p.y });
+  try{ canvas.setPointerCapture(e.pointerId); }catch(_){}
+});
+canvas.addEventListener('pointermove',e=>{
+  const t=ptrs.get(e.pointerId);
+  if(t) t.y=pointerY(e).y;
+});
+['pointerup','pointercancel'].forEach(t=>canvas.addEventListener(t,e=>ptrs.delete(e.pointerId)));
+
 // ── Drawing ───────────────────────────────────────────────────────
 function drawBg(){
-  ctx.fillStyle='#f4f2ee';
+  ctx.fillStyle='#06061a';
   ctx.fillRect(0,0,W,H);
   // Center line
   ctx.setLineDash([10,10]);
-  ctx.strokeStyle='#ddd';
+  ctx.strokeStyle='#2a2a4a';
   ctx.lineWidth=2;
   ctx.beginPath();
   ctx.moveTo(W/2,0); ctx.lineTo(W/2,H);
@@ -280,7 +382,7 @@ function drawBg(){
   ctx.setLineDash([]);
 }
 
-function drawFace(img, gw, gh, x, y, dw, dh){
+function drawFace(img, x, y, dw, dh){
   ctx.imageSmoothingEnabled=false;
   ctx.drawImage(img, x, y, dw, dh);
 }
@@ -314,40 +416,64 @@ function drawParticles(){
 function drawScores(){
   ctx.textAlign='center';
   ctx.font='bold 48px monospace';
-  ctx.fillStyle='rgba(0,0,0,0.08)';
+  ctx.fillStyle='rgba(255,255,255,0.14)';
   ctx.fillText(score1, W/4, 60);
   ctx.fillText(score2, 3*W/4, 60);
 }
 
 function drawOverlay(title,sub){
-  ctx.fillStyle='rgba(0,0,0,0.6)';
+  ctx.fillStyle='rgba(0,0,20,0.72)';
   ctx.fillRect(0,0,W,H);
   ctx.textAlign='center';
-  ctx.font='bold 36px monospace'; ctx.fillStyle='#FFD700';
-  ctx.fillText(title,W/2,H/2-20);
-  ctx.font='14px monospace'; ctx.fillStyle='#fff';
-  ctx.fillText(sub,W/2,H/2+16);
+  ctx.font='bold 44px monospace'; ctx.fillStyle='#FFD700';
+  ctx.fillText(title,W/2,H/2-22);
+  ctx.font='bold 21px monospace'; ctx.fillStyle='#ddd';
+  ctx.fillText(sub,W/2,H/2+24);
 }
 
 // ── Update ────────────────────────────────────────────────────────
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+function follow(y, h, target, speed){
+  const d=target-(y+h/2);
+  return clamp(y+Math.sign(d)*Math.min(Math.abs(d),speed), 0, H-h);
+}
+
 function update(){
+  // Particles (laufen auch nach einem Punkt aus)
+  particles.forEach(p=>{ p.x+=p.vx; p.y+=p.vy; p.life-=0.04; p.vx*=0.95; p.vy*=0.95; });
+  particles=particles.filter(p=>p.life>0);
+
   if(state!=='playing') return;
 
-  // Paddle movement
-  const p1cx=PAD1_W/2+6; // paddle center x offset
-  const p2cx=PAD2_W/2+6;
-  if(keys['KeyW']) p1y=Math.max(0,p1y-PAD_SPEED);
-  if(keys['KeyS']) p1y=Math.min(H-PAD_H,p1y+PAD_SPEED);
-  if(keys['ArrowUp']) p2y=Math.max(0,p2y-PAD_SPEED);
-  if(keys['ArrowDown']) p2y=Math.min(H-PAD2_H,p2y+PAD_SPEED);
+  // Schläger per Tastatur
+  const up1 = keys['KeyW'] || (mode===1 && keys['ArrowUp']);
+  const dn1 = keys['KeyS'] || (mode===1 && keys['ArrowDown']);
+  if(up1) p1y=Math.max(0,p1y-PAD_SPEED);
+  if(dn1) p1y=Math.min(H-PAD_H,p1y+PAD_SPEED);
+  if(mode===2){
+    if(keys['ArrowUp']) p2y=Math.max(0,p2y-PAD_SPEED);
+    if(keys['ArrowDown']) p2y=Math.min(H-PAD2_H,p2y+PAD_SPEED);
+  }
+
+  // Schläger per Finger/Maus
+  ptrs.forEach(t=>{
+    if(t.side===1) p1y=follow(p1y,PAD_H,t.y,TOUCH_SPEED);
+    else if(mode===2) p2y=follow(p2y,PAD2_H,t.y,TOUCH_SPEED);
+  });
+
+  // Computer-Gegner: folgt dem Ball, wenn er auf ihn zukommt
+  if(mode===1){
+    const target = ball.vx>0 ? ball.y : H/2;
+    if(Math.abs(target-(p2y+PAD2_H/2))>8) p2y=follow(p2y,PAD2_H,target,AI_SPEED);
+  }
 
   // Ball movement
   ball.x+=ball.vx;
   ball.y+=ball.vy;
 
   // Top/bottom bounce
-  if(ball.y-BALL_SIZE/2<=0){ ball.y=BALL_SIZE/2; ball.vy=Math.abs(ball.vy); }
-  if(ball.y+BALL_SIZE/2>=H){ ball.y=H-BALL_SIZE/2; ball.vy=-Math.abs(ball.vy); }
+  if(ball.y-BALL_SIZE/2<=0){ ball.y=BALL_SIZE/2; ball.vy=Math.abs(ball.vy); beep(300,0.04,'square',0.025); }
+  if(ball.y+BALL_SIZE/2>=H){ ball.y=H-BALL_SIZE/2; ball.vy=-Math.abs(ball.vy); beep(300,0.04,'square',0.025); }
 
   // Paddle 1 (left) collision
   const p1right=PAD1_W+6+10; // include gold bar width
@@ -361,7 +487,8 @@ function update(){
     const speed=Math.min(Math.sqrt(ball.vx**2+ball.vy**2)*1.08, 16);
     ball.vx=Math.abs(Math.cos(angle)*speed);
     ball.vy=Math.sin(angle)*speed;
-    spawnParticles(ball.x,ball.y,'#0057ff');
+    spawnParticles(ball.x,ball.y,'#3d8bff');
+    beep(440,0.06,'square',0.04);
   }
 
   // Paddle 2 (right) collision
@@ -377,22 +504,23 @@ function update(){
     ball.vx=-Math.abs(Math.cos(angle)*speed);
     ball.vy=Math.sin(angle)*speed;
     spawnParticles(ball.x,ball.y,'#ff4d2e');
+    beep(520,0.06,'square',0.04);
   }
 
   // Score
-  if(ball.x<0){ score2++; spawnParticles(0,ball.y,'#ff4d2e'); lastScorer=2; if(!checkWin()){ s1El.textContent=score1; s2El.textContent=score2; state='paused'; ball={x:W/2,y:H/2,vx:0,vy:0}; } return; }
-  if(ball.x>W){ score1++; spawnParticles(W,ball.y,'#0057ff'); lastScorer=1; if(!checkWin()){ s1El.textContent=score1; s2El.textContent=score2; state='paused'; ball={x:W/2,y:H/2,vx:0,vy:0}; } return; }
-
-  // Particles
-  particles.forEach(p=>{ p.x+=p.vx; p.y+=p.vy; p.life-=0.04; p.vx*=0.95; p.vy*=0.95; });
-  particles=particles.filter(p=>p.life>0);
+  if(ball.x<0){ score2++; spawnParticles(0,ball.y,'#ff4d2e'); lastScorer=2; scored(); return; }
+  if(ball.x>W){ score1++; spawnParticles(W,ball.y,'#3d8bff'); lastScorer=1; scored(); return; }
 }
 
-function checkWin(){
-  if(score1>=WIN_SCORE){ state='win'; s1El.textContent=score1; s2El.textContent=score2; return true; }
-  if(score2>=WIN_SCORE){ state='win'; s1El.textContent=score1; s2El.textContent=score2; return true; }
+function scored(){
   s1El.textContent=score1; s2El.textContent=score2;
-  return false;
+  if(score1>=WIN_SCORE||score2>=WIN_SCORE){
+    state='win'; lockInput();
+    [523,659,784,1047].forEach((f,i)=>setTimeout(()=>beep(f,0.15,'square',0.05),i*120));
+  } else {
+    state='point'; ball={x:W/2,y:H/2,vx:0,vy:0};
+    beep(180,0.3,'sawtooth',0.05,-80);
+  }
 }
 
 function roundRect(ctx, x, y, w, h, r){
@@ -410,66 +538,55 @@ function roundRect(ctx, x, y, w, h, r){
   ctx.fill();
 }
 
-function loop(){
+function draw(){
   drawBg();
-  update();
 
   // Gold bars in front of paddles
   const BAR_W=6, BAR_H=70, BAR_R=3;
   ctx.fillStyle='#DDB200';
-  // Both bars same size, centered on their respective paddle
   roundRect(ctx, 6+PAD1_W+2, p1y+(PAD_H-BAR_H)/2, BAR_W, BAR_H, BAR_R);
   roundRect(ctx, W-PAD2_W-6-BAR_W-2, p2y+(PAD2_H-BAR_H)/2, BAR_W, BAR_H, BAR_R);
 
   // Draw paddles as faces
-  drawFace(face1,P1_W,P1_H, 6,p1y, PAD1_W,PAD_H);
-  drawFace(face2,P2_W,P2_H, W-PAD2_W-6,p2y, PAD2_W,PAD2_H);
+  drawFace(face1, 6,p1y, PAD1_W,PAD_H);
+  drawFace(face2, W-PAD2_W-6,p2y, PAD2_W,PAD2_H);
 
   drawScores();
   drawBall();
   drawParticles();
 
-  if(state==='waiting') drawOverlay('PROSA PONG','LEERTASTE zum Starten');
-  else if(state==='paused') drawOverlay('Punkt!','LEERTASTE zum Weiterspielen');
+  const tap = TOUCH ? 'Tippen' : 'LEERTASTE oder KLICK';
+  if(state==='waiting') drawOverlay('PROSA PONG', tap+' zum Starten');
+  else if(state==='point') drawOverlay('Punkt!', tap+' zum Weiterspielen');
   else if(state==='win'){
-    const winner=score1>=WIN_SCORE?'Team 1 🎉':'Team 2 🎉';
-    drawOverlay(winner+' gewinnt!','LEERTASTE für Rematch');
+    const won1=score1>=WIN_SCORE;
+    const title = mode===1 ? (won1?'Du gewinnst! 🎉':'Der Computer gewinnt!')
+                           : (won1?'Team 1 gewinnt! 🎉':'Team 2 gewinnt! 🎉');
+    drawOverlay(title, locked() ? '' : tap+' für Revanche');
   }
-
-  requestAnimationFrame(loop);
+  if(paused) drawOverlay('PAUSE', PAUSE_SUB);
 }
 
+updateLabels();
 reset(true);
-loop();
+draw();
+requestAnimationFrame(loop);
 
-// Draw face icons in UI
+// Gesichter neben den Punkten
 (function(){
-  // Icon 1 – bald face (P1)
-  const c1=document.getElementById('icon1');
-  const x1=c1.getContext('2d');
-  x1.imageSmoothingEnabled=false;
-  const s1=Math.min(c1.width/P1_W, c1.height/P1_H);
-  const ox1=(c1.width-P1_W*s1)/2, oy1=(c1.height-P1_H*s1)/2;
-  for(let r=0;r<P1_H;r++)
-    for(let c=0;c<P1_W;c++){
-      const col=P1[r]&&P1[r][c]; if(!col) continue;
-      x1.fillStyle=col;
-      x1.fillRect(Math.round(ox1+c*s1),Math.round(oy1+r*s1),Math.ceil(s1)+1,Math.ceil(s1)+1);
-    }
-  // Icon 2 – brown hair (P2)
-  const c2=document.getElementById('icon2');
-  const x2=c2.getContext('2d');
-  x2.imageSmoothingEnabled=false;
-  const s2=Math.min(c2.width/P2_W, c2.height/P2_H);
-  const ox2=(c2.width-P2_W*s2)/2, oy2=(c2.height-P2_H*s2)/2;
-  for(let r=0;r<P2_H;r++)
-    for(let c=0;c<P2_W;c++){
-      const col=P2[r]&&P2[r][c]; if(!col) continue;
-      x2.fillStyle=col;
-      x2.fillRect(Math.round(ox2+c*s2),Math.round(oy2+r*s2),Math.ceil(s2)+1,Math.ceil(s2)+1);
-    }
+  [['icon1',P1,P1_W,P1_H],['icon2',P2,P2_W,P2_H]].forEach(([id,G,gw,gh])=>{
+    const c=document.getElementById(id), x=c.getContext('2d');
+    x.imageSmoothingEnabled=false;
+    const s=Math.min(c.width/gw, c.height/gh);
+    const ox=(c.width-gw*s)/2, oy=(c.height-gh*s)/2;
+    for(let r=0;r<gh;r++)
+      for(let k=0;k<gw;k++){
+        const col=G[r]&&G[r][k]; if(!col) continue;
+        x.fillStyle=col;
+        x.fillRect(Math.round(ox+k*s),Math.round(oy+r*s),Math.ceil(s)+1,Math.ceil(s)+1);
+      }
+  });
 })();
-setTimeout(()=>{document.getElementById('splash').style.display='none';},3000);
 </script>
 </body>
 </html>
